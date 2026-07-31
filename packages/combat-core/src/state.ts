@@ -44,15 +44,22 @@ function makeFighter(id: string, slot: 0 | 1, startX: number): FighterState {
 
 /**
  * Create a fresh match state.
- * P1 = Nyra Vex (left), P2 = Bram Kade (right), 1000 HP, 0 flux, round 1 of 3.
+ * Defaults: P1 = Nyra Vex (left), P2 = Bram Kade (right).
+ * Override with `p1Id` / `p2Id` (must exist in FIGHTER_KITS).
  */
 export function createInitialState(options: CreateInitialStateOptions): GameState {
   const seed = options.seed | 0;
   const mode = options.mode ?? 'versus';
   const rng = seed <= 0 ? 1 : seed;
 
-  const p1 = makeFighter('nyra_vex', 0, -6500);
-  const p2 = makeFighter('bram_kade', 1, 6500);
+  const p1Id = options.p1Id ?? 'nyra_vex';
+  const p2Id = options.p2Id ?? 'bram_kade';
+  // Validate kits early (throws if unknown).
+  getKit(p1Id);
+  getKit(p2Id);
+
+  const p1 = makeFighter(p1Id, 0, -6500);
+  const p2 = makeFighter(p2Id, 1, 6500);
 
   const state: GameState = {
     tick: 0,

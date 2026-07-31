@@ -114,6 +114,14 @@ describe('initial state', () => {
     expect(s.matchPhase).toBe('round_intro');
   });
 
+  it('accepts custom p1Id / p2Id roster picks', () => {
+    const s = createInitialState({ seed: 2, p1Id: 'iria_sol', p2Id: 'nyra_vex' });
+    expect(s.fighters[0].id).toBe('iria_sol');
+    expect(s.fighters[1].id).toBe('nyra_vex');
+    expect(s.fighters[0].hp).toBe(920);
+    expect(s.fighters[1].hp).toBe(1000);
+  });
+
   it('reaches fighting after intro frames', () => {
     let s = createInitialState({ seed: 1 });
     s = stepN(s, blankInputs(), 61);

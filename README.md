@@ -38,7 +38,7 @@ corepack prepare pnpm@9.15.0 --activate
 pnpm install
 ```
 
-## Play the greybox (local 1v1)
+## Play the greybox
 
 ```bash
 pnpm install
@@ -47,16 +47,28 @@ pnpm dev
 
 Open the URL Vite prints (usually `http://localhost:5173/`).
 
-| | Player 1 (Nyra Vex) | Player 2 (Bram Kade) |
-|--|---------------------|----------------------|
+### Character menu
+
+1. Pick **your** fighter (Nyra / Bram / Iria)  
+2. Pick the **opponent** fighter  
+3. Choose **CPU** (AI) or **Human** (local P2)  
+4. If CPU: Easy / Normal / Hard  
+5. Press **FIGHT** (or `Enter`)
+
+`Esc` or `M` returns to the menu. `Enter` rematches with the same setup.
+
+### Controls
+
+| | Player 1 | Player 2 (Human mode only) |
+|--|----------|----------------------------|
 | Move | `A` `D` | `←` `→` |
 | Jump / crouch | `W` / `S` | `↑` / `↓` |
 | Light / Heavy | `F` / `G` | `J` / `K` |
 | Gun / Spell | `H` / `R` | `L` / `U` |
 | Guard / Dash | `Shift` / `E` | `/` / `.` |
-| Rematch / Pause / Hitboxes | `Enter` / `P` / `B` | same |
+| Rematch / Menu / Pause / Hitboxes | `Enter` / `Esc` / `P` / `B` | same |
 
-Simulation runs at a fixed **60 Hz** via `@aether-break/combat-core`; the canvas is presentation-only.
+Simulation runs at a fixed **60 Hz** via `@aether-break/combat-core`; the canvas is presentation-only. CPU AI is client-side and does not live inside CombatCore.
 
 ## Scripts
 

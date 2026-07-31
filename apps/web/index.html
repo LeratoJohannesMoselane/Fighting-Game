@@ -13,18 +13,18 @@
           <span class="logo">AETHER BREAK</span>
           <span class="tag">Greybox Vertical Slice · 60 Hz CombatCore</span>
         </div>
-        <div id="match-meta" class="match-meta">Round 1 · BEST OF 3</div>
+        <div id="match-meta" class="match-meta">Select characters</div>
       </header>
 
       <div class="hud">
         <div class="fighter-hud p1">
           <div class="name-row">
-            <strong id="p1-name">NYRA VEX</strong>
-            <span id="p1-wins" class="wins">● ○ ○</span>
+            <strong id="p1-name">P1</strong>
+            <span id="p1-wins" class="wins">○ ○ ○</span>
           </div>
           <div class="bar hp"><div id="p1-hp" class="fill"></div></div>
           <div class="bar flux"><div id="p1-flux" class="fill"></div></div>
-          <div id="p1-phase" class="phase">neutral</div>
+          <div id="p1-phase" class="phase">—</div>
         </div>
 
         <div class="center-hud">
@@ -34,12 +34,12 @@
 
         <div class="fighter-hud p2">
           <div class="name-row">
-            <span id="p2-wins" class="wins">○ ○ ●</span>
-            <strong id="p2-name">BRAM KADE</strong>
+            <span id="p2-wins" class="wins">○ ○ ○</span>
+            <strong id="p2-name">P2</strong>
           </div>
           <div class="bar hp"><div id="p2-hp" class="fill"></div></div>
           <div class="bar flux"><div id="p2-flux" class="fill"></div></div>
-          <div id="p2-phase" class="phase">neutral</div>
+          <div id="p2-phase" class="phase">—</div>
         </div>
       </div>
 
@@ -50,20 +50,19 @@
 
       <footer class="controls">
         <div class="col">
-          <h3>Player 1 — Nyra</h3>
+          <h3 id="p1-controls-title">Player 1</h3>
           <p><kbd>A</kbd><kbd>D</kbd> move · <kbd>W</kbd> jump · <kbd>S</kbd> crouch</p>
           <p><kbd>F</kbd> light · <kbd>G</kbd> heavy · <kbd>H</kbd> gun · <kbd>R</kbd> spell</p>
           <p><kbd>Shift</kbd> guard · <kbd>E</kbd> dash</p>
         </div>
         <div class="col center">
           <p id="fps">— FPS</p>
-          <p><kbd>Enter</kbd> rematch · <kbd>P</kbd> pause · <kbd>B</kbd> hitboxes</p>
+          <p><kbd>Enter</kbd> rematch · <kbd>Esc</kbd>/<kbd>M</kbd> menu</p>
+          <p><kbd>P</kbd> pause · <kbd>B</kbd> hitboxes</p>
         </div>
         <div class="col right">
-          <h3>Player 2 — Bram</h3>
-          <p><kbd>←</kbd><kbd>→</kbd> move · <kbd>↑</kbd> jump · <kbd>↓</kbd> crouch</p>
-          <p><kbd>J</kbd> light · <kbd>K</kbd> heavy · <kbd>L</kbd> gun · <kbd>U</kbd> spell</p>
-          <p><kbd>/</kbd> guard · <kbd>.</kbd> dash</p>
+          <h3 id="p2-controls-title">Player 2 / CPU</h3>
+          <p id="p2-controls-hint">← → move · ↑ jump · ↓ crouch · J/K/L/U · / guard · . dash</p>
         </div>
       </footer>
     </div>

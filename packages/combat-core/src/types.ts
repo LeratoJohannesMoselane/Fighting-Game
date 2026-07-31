@@ -252,4 +252,8 @@ export interface GameState {
 export interface CreateInitialStateOptions {
   seed: number;
   mode?: 'versus' | 'training' | 'replay';
+  /** Fighter kit id for slot 0 (default nyra_vex). */
+  p1Id?: string;
+  /** Fighter kit id for slot 1 (default bram_kade). */
+  p2Id?: string;
 }

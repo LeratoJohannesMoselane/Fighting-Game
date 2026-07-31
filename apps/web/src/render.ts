@@ -21,10 +21,12 @@ const ORIGIN_X = W / 2;
 export interface RenderOptions {
   showHitboxes: boolean;
   shake: number;
+  p1Color?: string;
+  p2Color?: string;
 }
 
-const P1_COLOR = '#2ee6c5';
-const P2_COLOR = '#ff4d6d';
+const DEFAULT_P1 = '#2ee6c5';
+const DEFAULT_P2 = '#ff4d6d';
 
 export class ArenaRenderer {
   readonly canvas: HTMLCanvasElement;
@@ -73,12 +75,15 @@ export class ArenaRenderer {
     this.updateFx();
     this.drawFx();
 
+    const p1c = opts.p1Color ?? DEFAULT_P1;
+    const p2c = opts.p2Color ?? DEFAULT_P2;
+
     for (const p of state.projectiles) {
-      this.drawProjectile(p);
+      this.drawProjectile(p, p.ownerSlot === 0 ? p1c : p2c);
     }
 
-    this.drawFighter(state.fighters[0], P1_COLOR, opts.showHitboxes, state);
-    this.drawFighter(state.fighters[1], P2_COLOR, opts.showHitboxes, state);
+    this.drawFighter(state.fighters[0], p1c, opts.showHitboxes, state);
+    this.drawFighter(state.fighters[1], p2c, opts.showHitboxes, state);
 
     if (opts.showHitboxes) {
       this.drawActiveHitboxes(state.fighters[0], '#ffe566');
@@ -267,10 +272,9 @@ export class ArenaRenderer {
     }
   }
 
-  private drawProjectile(p: ProjectileState): void {
+  private drawProjectile(p: ProjectileState, color: string): void {
     const ctx = this.ctx;
     const c = this.worldToScreen(fromFp(p.x), fromFp(p.y));
-    const color = p.ownerSlot === 0 ? P1_COLOR : P2_COLOR;
     ctx.save();
     ctx.translate(c.x, c.y);
     ctx.fillStyle = color;

@@ -33,6 +33,9 @@ export class LocalInput {
   paused = false;
   showHitboxes = false;
   rematchRequested = false;
+  menuRequested = false;
+  /** When false, combat keys are ignored (character menu open). */
+  fighting = false;
 
   constructor() {
     window.addEventListener('keydown', (e) => this.onKey(e, true));
@@ -41,13 +44,21 @@ export class LocalInput {
   }
 
   private onKey(e: KeyboardEvent, down: boolean): void {
-    // Ignore browser shortcuts while playing.
     if (e.code === 'Space' || e.code.startsWith('Arrow') || e.code === 'Slash') {
-      e.preventDefault();
+      if (this.fighting) e.preventDefault();
     }
 
     if (down) {
       if (e.repeat) return;
+
+      // Global: Esc always requests menu (even from fight)
+      if (e.code === 'Escape') {
+        this.menuRequested = true;
+        return;
+      }
+
+      if (!this.fighting) return;
+
       if (e.code === 'KeyP') {
         this.paused = !this.paused;
         return;
@@ -56,7 +67,12 @@ export class LocalInput {
         this.showHitboxes = !this.showHitboxes;
         return;
       }
-      if (e.code === 'Enter') {
+      if (e.code === 'Enter' || e.code === 'KeyM') {
+        // Enter = rematch in fight; M also opens menu via dedicated path
+        if (e.code === 'KeyM') {
+          this.menuRequested = true;
+          return;
+        }
         this.rematchRequested = true;
         return;
       }
@@ -67,6 +83,9 @@ export class LocalInput {
   }
 
   sample(): { p1: ActionBits; p2: ActionBits } {
+    if (!this.fighting) {
+      return { p1: emptyActions(), p2: emptyActions() };
+    }
     return {
       p1: this.mapHeld(P1_MAP),
       p2: this.mapHeld(P2_MAP),
@@ -76,6 +95,12 @@ export class LocalInput {
   consumeRematch(): boolean {
     const v = this.rematchRequested;
     this.rematchRequested = false;
+    return v;
+  }
+
+  consumeMenu(): boolean {
+    const v = this.menuRequested;
+    this.menuRequested = false;
     return v;
   }
 
