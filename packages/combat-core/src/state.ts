@@ -3,6 +3,8 @@ import {
   DEFAULT_HURTBOX,
   INPUT_BUFFER_FRAMES,
   MAX_HP,
+  MAX_MAGIC,
+  MAX_STAMINA,
   ROUND_INTRO_FRAMES,
   ROUND_TICKS,
 } from './constants.js';
@@ -20,6 +22,9 @@ function makeFighter(id: string, slot: 0 | 1, startX: number): FighterState {
     id,
     slot,
     hp: kit.base.hp > 0 ? kit.base.hp : MAX_HP,
+    stamina: MAX_STAMINA,
+    magic: MAX_MAGIC,
+    ultimate: 0,
     flux: 0,
     x: startX,
     y: 0,
@@ -99,7 +104,10 @@ export function resetRoundFighters(state: GameState): void {
 
 function resetFighterForRound(f: FighterState, x: number, hp: number, facing: 1 | -1): void {
   f.hp = hp;
-  f.flux = 0;
+  f.stamina = MAX_STAMINA;
+  f.magic = MAX_MAGIC;
+  // Ultimate carries between rounds within a match (anime comeback tension).
+  f.flux = f.ultimate;
   f.x = x;
   f.y = 0;
   f.vx = 0;

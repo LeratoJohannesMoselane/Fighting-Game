@@ -1,6 +1,7 @@
 /**
  * Public types for CombatCore v0.
- * All spatial quantities are fixed-point integers (× FP_SCALE) unless noted as "frames" or "hp/flux".
+ * Spatial quantities are fixed-point integers (× FP_SCALE).
+ * Resources: hp, stamina, magic, ultimate (0–100 bars unless noted).
  */
 
 /** Boolean action mask for one player on one frame (SRS Appendix A). */
@@ -73,7 +74,17 @@ export interface HitboxDef {
 export interface OnHitData {
   damage: number;
   hitStun: number;
+  /**
+   * Ultimate meter gained by the attacker on hit (anime super gauge).
+   * Legacy field name `fluxGain` kept for content compatibility.
+   */
   fluxGain: number;
+  /** Stamina restored to attacker on melee hit (guns restore 0). */
+  staminaGain?: number;
+  /** Magic restored to attacker on melee hit. */
+  magicGain?: number;
+  /** Ultimate gained by defender when struck (comeback spark). */
+  defenderUltGain?: number;
   /** Optional knockback in fp units / tick (facing-relative). */
   knockbackX?: number;
   knockbackY?: number;
@@ -105,8 +116,16 @@ export interface MoveData {
   cancelTo: readonly string[];
   /** Optional projectile spawned on a given local frame. */
   projectile?: ProjectileSpawnDef;
-  /** Reserved for abilities/ultimates (Milestone 2+). */
+  /** Stamina required to start this move (guns/dash). */
+  staminaCost?: number;
+  /** Magic required to start this move (guns/spells/ult). */
+  magicCost?: number;
+  /** Ultimate meter required (100 = full Awakening). */
+  ultimateCost?: number;
+  /** @deprecated Prefer magicCost / ultimateCost. */
   fluxCost?: number;
+  /** True for anime super — camera lock presentation hook. */
+  isUltimate?: boolean;
   /** Reserved. */
   invulnFrames?: readonly [number, number];
   /** Movement impulse applied once on startup (fp). */
@@ -160,6 +179,23 @@ export interface FighterState {
   id: string;
   slot: 0 | 1;
   hp: number;
+  /**
+   * Stamina (0–MAX_STAMINA). Guns & dashes spend it.
+   * Restored primarily by landing physical melee hits.
+   */
+  stamina: number;
+  /**
+   * Magic (0–MAX_MAGIC). Guns, spells, and ultimates spend it.
+   * Restored primarily by landing physical melee hits.
+   */
+  magic: number;
+  /**
+   * Ultimate / Awakening meter (0–MAX_ULTIMATE).
+   * Fills from melee combat; full bar enables super.
+   * Also exposed as `flux` for SRS naming compatibility.
+   */
+  ultimate: number;
+  /** @deprecated Alias of `ultimate` — prefer ultimate. */
   flux: number;
   /** Fixed-point position. */
   x: number;
@@ -222,6 +258,15 @@ export type GameEvent =
   | { type: 'projectile_spawned'; slot: 0 | 1; moveId: string; projectileId: number; tick: number }
   | { type: 'damage_dealt'; slot: 0 | 1; amount: number; remainingHp: number; tick: number }
   | { type: 'death'; slot: 0 | 1; tick: number }
+  | { type: 'ultimate_ready'; slot: 0 | 1; tick: number }
+  | { type: 'ultimate_activated'; slot: 0 | 1; moveId: string; tick: number }
+  | {
+      type: 'resource_denied';
+      slot: 0 | 1;
+      resource: 'stamina' | 'magic' | 'ultimate';
+      moveId: string;
+      tick: number;
+    }
   | { type: 'round_end'; round: number; winner: 0 | 1 | 'draw'; tick: number }
   | { type: 'match_end'; winner: 0 | 1 | 'draw'; tick: number }
   | { type: 'phase_change'; from: MatchPhase; to: MatchPhase; tick: number };

@@ -12,6 +12,9 @@ export function blankInputs(): StepInputs {
   return { p1: emptyActions(), p2: emptyActions() };
 }
 
+/** Re-export for resource tests that need emptyActions. */
+export { emptyActions };
+
 export function inputs(p1: Partial<ActionBits> = {}, p2: Partial<ActionBits> = {}): StepInputs {
   return {
     p1: { ...emptyActions(), ...p1 },

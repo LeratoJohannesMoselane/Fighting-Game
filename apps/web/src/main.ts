@@ -70,7 +70,7 @@ function applyRosterLabels(cfg: MatchConfig): void {
     p2Hint.textContent =
       cfg.opponentMode === 'cpu'
         ? 'AI controlled — no keyboard needed for P2'
-        : '← → move · ↑ jump · ↓ crouch · J/K/L/U · / guard · . dash';
+        : '← → move · ↑ jump · J/K light/heavy · L gun · U spell · O Awakening · / guard · . dash';
   }
 
   // Tint name colors from roster
@@ -138,6 +138,11 @@ function handleEvents(events: GameEvent[], s: GameState): void {
       const defender = s.fighters[e.defender];
       renderer.pulseHit(fromFp(defender.x), fromFp(defender.y + 800), '#93c5fd', true);
       shake = Math.min(1, shake + 0.25);
+    } else if (e.type === 'ultimate_activated') {
+      shake = 1;
+      hud.flashUltimate();
+    } else if (e.type === 'ultimate_ready') {
+      shake = Math.min(1, shake + 0.4);
     } else if (e.type === 'death' || e.type === 'round_end') {
       shake = 1;
     }

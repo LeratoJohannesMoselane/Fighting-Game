@@ -11,7 +11,7 @@
       <header class="top">
         <div class="brand">
           <span class="logo">AETHER BREAK</span>
-          <span class="tag">Greybox Vertical Slice · 60 Hz CombatCore</span>
+          <span class="tag">Greybox · HP · Stamina · Magic · Awakening</span>
         </div>
         <div id="match-meta" class="match-meta">Select characters</div>
       </header>
@@ -22,8 +22,16 @@
             <strong id="p1-name">P1</strong>
             <span id="p1-wins" class="wins">○ ○ ○</span>
           </div>
-          <div class="bar hp"><div id="p1-hp" class="fill"></div></div>
-          <div class="bar flux"><div id="p1-flux" class="fill"></div></div>
+          <div class="bar-stack">
+            <div class="bar-label">HP</div>
+            <div class="bar hp"><div id="p1-hp" class="fill"></div></div>
+            <div class="bar-label">STA</div>
+            <div class="bar stamina"><div id="p1-stamina" class="fill"></div></div>
+            <div class="bar-label">MAG</div>
+            <div class="bar magic"><div id="p1-magic" class="fill"></div></div>
+            <div class="bar-label ult-label">AWAKENING</div>
+            <div class="bar ultimate"><div id="p1-ultimate" class="fill"></div></div>
+          </div>
           <div id="p1-phase" class="phase">—</div>
         </div>
 
@@ -37,8 +45,16 @@
             <span id="p2-wins" class="wins">○ ○ ○</span>
             <strong id="p2-name">P2</strong>
           </div>
-          <div class="bar hp"><div id="p2-hp" class="fill"></div></div>
-          <div class="bar flux"><div id="p2-flux" class="fill"></div></div>
+          <div class="bar-stack">
+            <div class="bar-label right">HP</div>
+            <div class="bar hp"><div id="p2-hp" class="fill"></div></div>
+            <div class="bar-label right">STA</div>
+            <div class="bar stamina"><div id="p2-stamina" class="fill"></div></div>
+            <div class="bar-label right">MAG</div>
+            <div class="bar magic"><div id="p2-magic" class="fill"></div></div>
+            <div class="bar-label right ult-label">AWAKENING</div>
+            <div class="bar ultimate"><div id="p2-ultimate" class="fill"></div></div>
+          </div>
           <div id="p2-phase" class="phase">—</div>
         </div>
       </div>
@@ -46,6 +62,7 @@
       <div class="stage-wrap">
         <canvas id="game" width="1280" height="720" aria-label="Aether Break arena"></canvas>
         <div id="hit-flash" class="hit-flash" hidden></div>
+        <div id="ult-flash" class="ult-flash" hidden></div>
       </div>
 
       <footer class="controls">
@@ -53,16 +70,24 @@
           <h3 id="p1-controls-title">Player 1</h3>
           <p><kbd>A</kbd><kbd>D</kbd> move · <kbd>W</kbd> jump · <kbd>S</kbd> crouch</p>
           <p><kbd>F</kbd> light · <kbd>G</kbd> heavy · <kbd>H</kbd> gun · <kbd>R</kbd> spell</p>
-          <p><kbd>Shift</kbd> guard · <kbd>E</kbd> dash</p>
+          <p>
+            <kbd>Q</kbd> <strong>AWAKENING</strong> · <kbd>Shift</kbd> guard · <kbd>E</kbd> dash
+          </p>
         </div>
         <div class="col center">
           <p id="fps">— FPS</p>
-          <p><kbd>Enter</kbd> rematch · <kbd>Esc</kbd>/<kbd>M</kbd> menu</p>
-          <p><kbd>P</kbd> pause · <kbd>B</kbd> hitboxes</p>
+          <p class="resource-legend">
+            <span class="lg-sta">STA</span> guns/dash ·
+            <span class="lg-mag">MAG</span> guns/spells/ult · <span class="lg-ult">ULT</span> melee
+            fills
+          </p>
+          <p><kbd>Enter</kbd> rematch · <kbd>Esc</kbd> menu · <kbd>P</kbd> pause</p>
         </div>
         <div class="col right">
           <h3 id="p2-controls-title">Player 2 / CPU</h3>
-          <p id="p2-controls-hint">← → move · ↑ jump · ↓ crouch · J/K/L/U · / guard · . dash</p>
+          <p id="p2-controls-hint">
+            ← → move · ↑ jump · J/K/L/U · <kbd>O</kbd> Awakening · / guard · . dash
+          </p>
         </div>
       </footer>
     </div>

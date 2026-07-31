@@ -7,8 +7,51 @@ export const TICK_MS = 1000 / TICK_RATE;
 /** Baseline fighter health (SRS §2.1). */
 export const MAX_HP = 1000;
 
-/** Full Flux meter capacity (SRS §2.1). */
-export const MAX_FLUX = 100;
+/**
+ * Stamina — physical gas tank.
+ * Guns and dashes spend it; close-range melee combat restores it.
+ */
+export const MAX_STAMINA = 100;
+
+/**
+ * Magic — arcane reservoir.
+ * Guns and spells spend it; physical combat restores it.
+ */
+export const MAX_MAGIC = 100;
+
+/**
+ * Ultimate meter — anime super gauge (0–100).
+ * Fills from landing/receiving melee; spends fully on Awakening Strike.
+ * Legacy alias: MAX_FLUX.
+ */
+export const MAX_ULTIMATE = 100;
+
+/** @deprecated Use MAX_ULTIMATE — kept for SRS naming compatibility. */
+export const MAX_FLUX = MAX_ULTIMATE;
+
+/** Stamina spent to fire a gun / ranged tool. */
+export const GUN_STAMINA_COST = 18;
+
+/** Magic spent to fire a gun / ranged tool. */
+export const GUN_MAGIC_COST = 12;
+
+/** Magic spent to cast a spell / ability. */
+export const SPELL_MAGIC_COST = 28;
+
+/** Stamina spent on spell (physical stance). */
+export const SPELL_STAMINA_COST = 8;
+
+/** Stamina spent on dash. */
+export const DASH_STAMINA_COST = 12;
+
+/** Magic spent when detonating a full ultimate. */
+export const ULTIMATE_MAGIC_COST = 35;
+
+/** Passive stamina regen per tick while not attacking (milli-units of bar). */
+export const STAMINA_REGEN_IDLE = 0;
+
+/** Passive magic regen is zero — must earn via melee. */
+export const MAGIC_REGEN_IDLE = 0;
 
 /** Round duration in ticks: 90 seconds × 60 Hz (SRS §2.1). */
 export const ROUND_TICKS = 90 * TICK_RATE;

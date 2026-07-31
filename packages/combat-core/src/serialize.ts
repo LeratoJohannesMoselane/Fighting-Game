@@ -39,12 +39,14 @@ function fighterToCanonical(f: FighterState): Record<string, unknown> {
     const k = cooldownKeys[i]!;
     cooldowns[k] = f.cooldowns[k] ?? 0;
   }
+  // Keep ultimate/flux in sync for legacy snapshots.
+  const ultimate = f.ultimate ?? f.flux ?? 0;
   return {
     cooldowns,
     dashRecovering: f.dashRecovering,
     dashTimer: f.dashTimer,
     facing: f.facing,
-    flux: f.flux,
+    flux: ultimate,
     guarding: f.guarding,
     hitstop: f.hitstop,
     hp: f.hp,
@@ -53,6 +55,7 @@ function fighterToCanonical(f: FighterState): Record<string, unknown> {
     inputBuffer: f.inputBuffer.map(actionsToCanonical),
     jumpUsed: f.jumpUsed,
     knockdownTimer: f.knockdownTimer,
+    magic: f.magic ?? 0,
     move: f.move
       ? {
           hasHit: f.move.hasHit,
@@ -64,7 +67,9 @@ function fighterToCanonical(f: FighterState): Record<string, unknown> {
       : null,
     phase: f.phase,
     slot: f.slot,
+    stamina: f.stamina ?? 0,
     stunFrames: f.stunFrames,
+    ultimate,
     vx: f.vx,
     vy: f.vy,
     wins: f.wins,
@@ -150,8 +155,16 @@ export function serializeState(state: GameState): string {
 /** Restore state from a serializeState payload. */
 export function deserializeState(json: string): GameState {
   const raw = JSON.parse(json) as GameState;
-  // Re-hydrate through clone to ensure plain shape.
   return cloneState(raw);
+}
+
+function syncFighterResources(f: FighterState): void {
+  // Prefer ultimate; fall back to flux for older snapshots.
+  const u = f.ultimate ?? f.flux ?? 0;
+  f.ultimate = u;
+  f.flux = u;
+  if (typeof f.stamina !== 'number') f.stamina = 100;
+  if (typeof f.magic !== 'number') f.magic = 100;
 }
 
 /**
@@ -159,7 +172,10 @@ export function deserializeState(json: string): GameState {
  * Guarantees: no shared references; plain JSON types only; stable for hashing.
  */
 export function cloneState(state: GameState): GameState {
-  return JSON.parse(serializeState(state)) as GameState;
+  const next = JSON.parse(serializeState(state)) as GameState;
+  syncFighterResources(next.fighters[0]);
+  syncFighterResources(next.fighters[1]);
+  return next;
 }
 
 /**

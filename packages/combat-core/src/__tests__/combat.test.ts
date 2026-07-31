@@ -39,9 +39,25 @@ function actionForMove(move: MoveData): Partial<ActionBits> {
       return { ranged: true };
     case 'SPELL':
       return { ability1: true };
+    case 'ULTIMATE':
+      return { ultimate: true };
     default:
       return { light: true };
   }
+}
+
+/** Ensure resource costs are affordable for the move under test. */
+function armResources(s: ReturnType<typeof closeRange>, slot: 0 | 1, move: MoveData) {
+  const f = s.fighters[slot];
+  const next = {
+    ...f,
+    stamina: 100,
+    magic: 100,
+    ultimate: move.input === 'ULTIMATE' ? 100 : f.ultimate,
+    flux: move.input === 'ULTIMATE' ? 100 : f.flux,
+  };
+  const fighters: typeof s.fighters = slot === 0 ? [next, s.fighters[1]] : [s.fighters[0], next];
+  return { ...s, fighters };
 }
 
 describe('block', () => {
@@ -84,6 +100,7 @@ describe('starter moves', () => {
         // P1 is nyra, P2 is bram — pick the matching slot
         const slot = fighterId === 'nyra_vex' ? 0 : 1;
         const defender = slot === 0 ? 1 : 0;
+        s = armResources(s, slot, move);
         const hpBefore = s.fighters[defender].hp;
         const act = actionForMove(move);
 
@@ -139,6 +156,7 @@ describe('starter moves', () => {
         let s = closeRange(400 + move.id.length);
         const slot = fighterId === 'nyra_vex' ? 0 : 1;
         const defender = slot === 0 ? 1 : 0;
+        s = armResources(s, slot, move);
         const hpBefore = s.fighters[defender].hp;
         const act = actionForMove(move);
         const guardP1 = slot === 1;
@@ -165,6 +183,7 @@ describe('starter moves', () => {
         s = hold(s, inputs({ left: true }, { right: true }), 200);
         const slot = fighterId === 'nyra_vex' ? 0 : 1;
         const defender = slot === 0 ? 1 : 0;
+        s = armResources(s, slot, move);
         const hpBefore = s.fighters[defender].hp;
         const act = actionForMove(move);
 
@@ -197,6 +216,7 @@ describe('starter moves', () => {
         let s = closeRange(600 + move.id.length);
         const slot = fighterId === 'nyra_vex' ? 0 : 1;
         const defender = slot === 0 ? 1 : 0;
+        s = armResources(s, slot, move);
         const hpBefore = s.fighters[defender].hp;
         const act = actionForMove(move);
 
@@ -220,6 +240,7 @@ describe('starter moves', () => {
       it('active-window boundary: recovers after total frames', () => {
         let s = fightingState(700 + move.id.length);
         const slot = fighterId === 'nyra_vex' ? 0 : 1;
+        s = armResources(s, slot, move);
         const act = actionForMove(move);
         // Duration + start frame + hitstop margin + cooldown cushion (no re-fire: blank inputs).
         const total = move.active[1] + move.recovery;

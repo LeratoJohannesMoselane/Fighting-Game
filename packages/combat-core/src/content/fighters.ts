@@ -5,7 +5,16 @@
  */
 
 import type { FighterKit, MoveData } from '../types.js';
-import { DEFAULT_HURTBOX, JUMP_VELOCITY } from '../constants.js';
+import {
+  DEFAULT_HURTBOX,
+  GUN_MAGIC_COST,
+  GUN_STAMINA_COST,
+  JUMP_VELOCITY,
+  MAX_ULTIMATE,
+  SPELL_MAGIC_COST,
+  SPELL_STAMINA_COST,
+  ULTIMATE_MAGIC_COST,
+} from '../constants.js';
 
 const HURT = { ...DEFAULT_HURTBOX };
 
@@ -16,16 +25,24 @@ function lightMove(id: string, cancelTo: string[] = []): MoveData {
     startup: 6,
     active: [6, 8],
     recovery: 12,
-    // Reach past body separation (~1200) into opponent hurtbox. SRS sample scaled ×10 for fp.
     hitboxes: [{ frame: 6, shape: 'box', x: 400, y: 400, w: 900, h: 800 }],
     hurtbox: HURT,
-    onHit: { damage: 42, hitStun: 15, fluxGain: 4, knockbackX: 120, knockbackY: 0 },
+    onHit: {
+      damage: 42,
+      hitStun: 15,
+      fluxGain: 8,
+      staminaGain: 10,
+      magicGain: 8,
+      defenderUltGain: 3,
+      knockbackX: 120,
+      knockbackY: 0,
+    },
     onBlock: { blockStun: 9, advantage: -2 },
     cancelTo,
   };
 }
 
-function heavyMove(id: string): MoveData {
+function heavyMove(id: string, cancelTo: string[] = []): MoveData {
   return {
     id,
     input: 'HEAVY',
@@ -34,9 +51,18 @@ function heavyMove(id: string): MoveData {
     recovery: 18,
     hitboxes: [{ frame: 12, shape: 'box', x: 350, y: 200, w: 1100, h: 1000 }],
     hurtbox: HURT,
-    onHit: { damage: 78, hitStun: 22, fluxGain: 10, knockbackX: 280, knockbackY: 200 },
+    onHit: {
+      damage: 78,
+      hitStun: 22,
+      fluxGain: 14,
+      staminaGain: 16,
+      magicGain: 12,
+      defenderUltGain: 5,
+      knockbackX: 280,
+      knockbackY: 200,
+    },
     onBlock: { blockStun: 12, advantage: -6, chip: 2 },
-    cancelTo: [],
+    cancelTo,
   };
 }
 
@@ -58,7 +84,10 @@ function gunMove(
     recovery: opts.recovery,
     hitboxes: [],
     hurtbox: HURT,
-    onHit: { damage: opts.damage, hitStun: 10, fluxGain: 3 },
+    // Guns spend stamina + magic; restore almost nothing (must melee to refill).
+    staminaCost: GUN_STAMINA_COST,
+    magicCost: GUN_MAGIC_COST,
+    onHit: { damage: opts.damage, hitStun: 10, fluxGain: 2, staminaGain: 0, magicGain: 0 },
     onBlock: { blockStun: 6, advantage: -4 },
     cancelTo: [],
     projectile: {
@@ -69,7 +98,7 @@ function gunMove(
       damage: opts.damage,
       hitStun: 10,
       blockStun: 6,
-      fluxGain: 3,
+      fluxGain: 2,
       width: 200,
       height: 120,
       maxActive: 2,
@@ -104,15 +133,74 @@ function spellMove(
       },
     ],
     hurtbox: HURT,
+    staminaCost: SPELL_STAMINA_COST,
+    magicCost: SPELL_MAGIC_COST,
     onHit: {
       damage: opts.damage,
       hitStun: 18,
-      fluxGain: 8,
+      fluxGain: 6,
+      staminaGain: 2,
+      magicGain: 0,
       knockbackX: 160,
       knockbackY: 100,
     },
     onBlock: { blockStun: 10, advantage: -8, chip: 3 },
     cancelTo: [],
+  };
+}
+
+/**
+ * Anime-style Awakening Strike — full ultimate meter + magic.
+ * Massive damage, long hitstun, cinematic hitstop.
+ */
+function ultimateMove(
+  id: string,
+  opts: {
+    nameHint: string;
+    damage: number;
+    startup: number;
+    active: readonly [number, number];
+    recovery: number;
+    hitbox: { x: number; y: number; w: number; h: number };
+    knockbackX: number;
+    knockbackY: number;
+  },
+): MoveData {
+  void opts.nameHint;
+  return {
+    id,
+    input: 'ULTIMATE',
+    startup: opts.startup,
+    active: opts.active,
+    recovery: opts.recovery,
+    hitboxes: [
+      {
+        frame: opts.active[0],
+        shape: 'box',
+        x: opts.hitbox.x,
+        y: opts.hitbox.y,
+        w: opts.hitbox.w,
+        h: opts.hitbox.h,
+      },
+    ],
+    hurtbox: HURT,
+    isUltimate: true,
+    ultimateCost: MAX_ULTIMATE,
+    magicCost: ULTIMATE_MAGIC_COST,
+    staminaCost: 10,
+    onHit: {
+      damage: opts.damage,
+      hitStun: 40,
+      fluxGain: 0,
+      staminaGain: 20,
+      magicGain: 5,
+      defenderUltGain: 8,
+      knockbackX: opts.knockbackX,
+      knockbackY: opts.knockbackY,
+    },
+    onBlock: { blockStun: 16, advantage: -12, chip: 8 },
+    cancelTo: [],
+    forwardImpulse: 200,
   };
 }
 
@@ -129,8 +217,8 @@ export const NYRA_VEX: FighterKit = {
     weight: 1000,
   },
   moves: [
-    lightMove('nyra_light', ['nyra_heavy']),
-    heavyMove('nyra_heavy'),
+    lightMove('nyra_light', ['nyra_heavy', 'nyra_event_horizon']),
+    heavyMove('nyra_heavy', ['nyra_event_horizon']),
     gunMove('nyra_gun', {
       damage: 28,
       speedX: 900,
@@ -138,13 +226,23 @@ export const NYRA_VEX: FighterKit = {
       recovery: 14,
       lifetime: 45,
     }),
-    // Ricochet Sigil stand-in: slow orb spell (ability reserved; greybox uses SPELL input via ability1 mapping).
     spellMove('nyra_spell', {
       damage: 45,
       startup: 14,
       active: [14, 20],
       recovery: 16,
       hitbox: { x: 200, y: 200, w: 1400, h: 1200 },
+    }),
+    // Event Horizon — rift crossfire super (anime confirm finisher).
+    ultimateMove('nyra_event_horizon', {
+      nameHint: 'Event Horizon',
+      damage: 280,
+      startup: 8,
+      active: [8, 16],
+      recovery: 28,
+      hitbox: { x: 100, y: 0, w: 1600, h: 1700 },
+      knockbackX: 420,
+      knockbackY: 320,
     }),
   ],
 };
@@ -162,8 +260,8 @@ export const BRAM_KADE: FighterKit = {
     weight: 1200,
   },
   moves: [
-    lightMove('bram_light', ['bram_heavy']),
-    heavyMove('bram_heavy'),
+    lightMove('bram_light', ['bram_heavy', 'bram_last_foundry']),
+    heavyMove('bram_heavy', ['bram_last_foundry']),
     gunMove('bram_gun', {
       damage: 35,
       speedX: 700,
@@ -171,7 +269,6 @@ export const BRAM_KADE: FighterKit = {
       recovery: 16,
       lifetime: 36,
     }),
-    // Furnace Rush stand-in: forward-advancing spell hitbox.
     {
       ...spellMove('bram_spell', {
         damage: 55,
@@ -181,6 +278,20 @@ export const BRAM_KADE: FighterKit = {
         hitbox: { x: 200, y: 200, w: 900, h: 800 },
       }),
       forwardImpulse: 400,
+    },
+    // Last Foundry — overclock gauntlet slam super.
+    {
+      ...ultimateMove('bram_last_foundry', {
+        nameHint: 'Last Foundry',
+        damage: 300,
+        startup: 10,
+        active: [10, 18],
+        recovery: 30,
+        hitbox: { x: 50, y: 0, w: 1400, h: 1600 },
+        knockbackX: 380,
+        knockbackY: 200,
+      }),
+      forwardImpulse: 500,
     },
   ],
 };
@@ -210,9 +321,18 @@ export const IRIA_SOL: FighterKit = {
       recovery: 11,
       hitboxes: [{ frame: 5, shape: 'box', x: 420, y: 900, w: 720, h: 360 }],
       hurtbox: { x: -520, y: 0, w: 1040, h: 1680 },
-      onHit: { damage: 36, hitStun: 14, fluxGain: 4, knockbackX: 100, knockbackY: 0 },
+      onHit: {
+        damage: 36,
+        hitStun: 14,
+        fluxGain: 8,
+        staminaGain: 10,
+        magicGain: 8,
+        defenderUltGain: 3,
+        knockbackX: 100,
+        knockbackY: 0,
+      },
       onBlock: { blockStun: 9, advantage: -2 },
-      cancelTo: ['iria_light_2', 'iria_heavy'],
+      cancelTo: ['iria_light_2', 'iria_heavy', 'iria_sevenfold'],
     },
     {
       id: 'iria_light_2',
@@ -222,9 +342,18 @@ export const IRIA_SOL: FighterKit = {
       recovery: 14,
       hitboxes: [{ frame: 6, shape: 'box', x: 380, y: 700, w: 860, h: 520 }],
       hurtbox: { x: -500, y: 0, w: 1000, h: 1680 },
-      onHit: { damage: 48, hitStun: 18, fluxGain: 6, knockbackX: 120, knockbackY: 280 },
+      onHit: {
+        damage: 48,
+        hitStun: 18,
+        fluxGain: 10,
+        staminaGain: 12,
+        magicGain: 10,
+        defenderUltGain: 4,
+        knockbackX: 120,
+        knockbackY: 280,
+      },
       onBlock: { blockStun: 11, advantage: -4 },
-      cancelTo: ['iria_spell', 'iria_bolt'],
+      cancelTo: ['iria_spell', 'iria_bolt', 'iria_sevenfold'],
     },
     {
       id: 'iria_heavy',
@@ -234,9 +363,18 @@ export const IRIA_SOL: FighterKit = {
       recovery: 22,
       hitboxes: [{ frame: 14, shape: 'box', x: 200, y: 80, w: 1200, h: 520 }],
       hurtbox: { x: -480, y: 0, w: 960, h: 1400 },
-      onHit: { damage: 82, hitStun: 24, fluxGain: 10, knockbackX: 320, knockbackY: 80 },
+      onHit: {
+        damage: 82,
+        hitStun: 24,
+        fluxGain: 14,
+        staminaGain: 16,
+        magicGain: 12,
+        defenderUltGain: 5,
+        knockbackX: 320,
+        knockbackY: 80,
+      },
       onBlock: { blockStun: 14, advantage: -8, chip: 3 },
-      cancelTo: [],
+      cancelTo: ['iria_sevenfold'],
     },
     gunMove('iria_bolt', {
       damage: 30,
@@ -245,13 +383,23 @@ export const IRIA_SOL: FighterKit = {
       recovery: 16,
       lifetime: 48,
     }),
-    // Prism Gate stand-in: mid-range delayed geometry hit (full gate FSM in content JSON).
     spellMove('iria_spell', {
       damage: 38,
       startup: 10,
       active: [10, 16],
       recovery: 18,
       hitbox: { x: 900, y: 400, w: 500, h: 900 },
+    }),
+    // Sevenfold Star — constellation burst super.
+    ultimateMove('iria_sevenfold', {
+      nameHint: 'Sevenfold Star',
+      damage: 270,
+      startup: 8,
+      active: [8, 14],
+      recovery: 26,
+      hitbox: { x: 0, y: 100, w: 1700, h: 1700 },
+      knockbackX: 300,
+      knockbackY: 400,
     }),
   ],
 };

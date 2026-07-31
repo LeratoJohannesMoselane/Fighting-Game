@@ -65,8 +65,20 @@ Open the URL Vite prints (usually `http://localhost:5173/`).
 | Jump / crouch | `W` / `S` | `↑` / `↓` |
 | Light / Heavy | `F` / `G` | `J` / `K` |
 | Gun / Spell | `H` / `R` | `L` / `U` |
+| **Awakening (Ultimate)** | `Q` | `O` |
 | Guard / Dash | `Shift` / `E` | `/` / `.` |
 | Rematch / Menu / Pause / Hitboxes | `Enter` / `Esc` / `P` / `B` | same |
+
+### Resources
+
+| Bar | Color | Spent by | Restored by |
+|-----|-------|----------|-------------|
+| **HP** | Teal / Red | Taking hits | — |
+| **Stamina** | Gold | Guns, dashes, spells | Landing **melee** hits |
+| **Magic** | Blue | Guns, spells, Awakening | Landing **melee** hits |
+| **Awakening** | Violet→Gold | Full bar → super | Landing/taking melee (anime super gauge) |
+
+Empty stamina/magic = guns and spells refuse. Full Awakening + enough magic = press `Q`/`O` for a cinematic super (Nyra Event Horizon, Bram Last Foundry, Iria Sevenfold Star).
 
 Simulation runs at a fixed **60 Hz** via `@aether-break/combat-core`; the canvas is presentation-only. CPU AI is client-side and does not live inside CombatCore.
 

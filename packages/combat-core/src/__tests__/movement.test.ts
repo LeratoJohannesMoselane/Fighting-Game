@@ -110,6 +110,9 @@ describe('initial state', () => {
     expect(s.fighters[0].hp).toBe(1000);
     expect(s.fighters[1].hp).toBe(1000);
     expect(s.fighters[0].flux).toBe(0);
+    expect(s.fighters[0].ultimate).toBe(0);
+    expect(s.fighters[0].stamina).toBe(100);
+    expect(s.fighters[0].magic).toBe(100);
     expect(s.round).toBe(1);
     expect(s.matchPhase).toBe('round_intro');
   });
@@ -120,6 +123,8 @@ describe('initial state', () => {
     expect(s.fighters[1].id).toBe('nyra_vex');
     expect(s.fighters[0].hp).toBe(920);
     expect(s.fighters[1].hp).toBe(1000);
+    expect(s.fighters[0].stamina).toBe(100);
+    expect(s.fighters[0].magic).toBe(100);
   });
 
   it('reaches fighting after intro frames', () => {

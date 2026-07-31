@@ -102,17 +102,44 @@ body {
   letter-spacing: 0.15em;
 }
 
+.bar-stack {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 3px 8px;
+  align-items: center;
+}
+
+.bar-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.bar-label.right {
+  text-align: right;
+}
+
+.bar-label.ult-label {
+  color: #fbbf24;
+}
+
 .bar {
-  height: 14px;
+  height: 12px;
   background: #121a28;
   border: 1px solid var(--line);
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 5px;
 }
 
-.bar.flux {
+.bar.stamina,
+.bar.magic {
   height: 8px;
+}
+
+.bar.ultimate {
+  height: 10px;
+  border-color: rgba(251, 191, 36, 0.35);
 }
 
 .bar .fill {
@@ -128,16 +155,80 @@ body {
 
 .p2 .hp .fill {
   background: linear-gradient(90deg, var(--p2), var(--p2-dim));
-  margin-left: auto;
 }
 
-.p1 .flux .fill,
-.p2 .flux .fill {
-  background: linear-gradient(90deg, #5b21b6, var(--flux));
+.p1 .stamina .fill,
+.p2 .stamina .fill {
+  background: linear-gradient(90deg, #b45309, #fbbf24);
+}
+
+.p1 .magic .fill,
+.p2 .magic .fill {
+  background: linear-gradient(90deg, #1d4ed8, #38bdf8);
+}
+
+.p1 .ultimate .fill,
+.p2 .ultimate .fill {
+  background: linear-gradient(90deg, #6b21a8, #e879f9 55%, #fbbf24);
+}
+
+.bar.ultimate .fill.full,
+.ultimate .fill.full {
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.85);
+  animation: ultPulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes ultPulse {
+  from {
+    filter: brightness(1);
+  }
+  to {
+    filter: brightness(1.35);
+  }
+}
+
+.p2 .bar-stack {
+  direction: rtl;
+}
+
+.p2 .bar-stack .bar-label {
+  direction: ltr;
 }
 
 .p2 .bar .fill {
   transform-origin: right center;
+}
+
+.resource-legend {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.lg-sta {
+  color: #fbbf24;
+  font-weight: 700;
+}
+.lg-mag {
+  color: #38bdf8;
+  font-weight: 700;
+}
+.lg-ult {
+  color: #e879f9;
+  font-weight: 700;
+}
+
+.ult-flash {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(251, 191, 36, 0.35), transparent 55%),
+    linear-gradient(180deg, rgba(168, 85, 247, 0.2), transparent 40%, rgba(56, 189, 248, 0.15));
+  opacity: 0;
+  transition: opacity 80ms linear;
+}
+
+.ult-flash.on {
+  opacity: 1;
 }
 
 .phase {

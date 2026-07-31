@@ -1,5 +1,7 @@
 import {
-  MAX_FLUX,
+  MAX_MAGIC,
+  MAX_STAMINA,
+  MAX_ULTIMATE,
   TICK_RATE,
   getKit,
   type FighterState,
@@ -24,8 +26,12 @@ function winsDots(wins: number): string {
 export class Hud {
   private readonly p1Hp = el('p1-hp');
   private readonly p2Hp = el('p2-hp');
-  private readonly p1Flux = el('p1-flux');
-  private readonly p2Flux = el('p2-flux');
+  private readonly p1Sta = el('p1-stamina');
+  private readonly p2Sta = el('p2-stamina');
+  private readonly p1Mag = el('p1-magic');
+  private readonly p2Mag = el('p2-magic');
+  private readonly p1Ult = el('p1-ultimate');
+  private readonly p2Ult = el('p2-ultimate');
   private readonly p1Phase = el('p1-phase');
   private readonly p2Phase = el('p2-phase');
   private readonly p1Wins = el('p1-wins');
@@ -37,6 +43,7 @@ export class Hud {
   private readonly meta = el('match-meta');
   private readonly fpsEl = el('fps');
   private readonly flash = el('hit-flash');
+  private readonly ultFlash = el('ult-flash');
 
   private frames = 0;
   private lastFpsTs = performance.now();
@@ -47,8 +54,22 @@ export class Hud {
       this.p2Name.textContent = info.p2Name.toUpperCase();
     }
 
-    this.setFighter(state.fighters[0], this.p1Hp, this.p1Flux, this.p1Phase, this.p1Wins);
-    this.setFighter(state.fighters[1], this.p2Hp, this.p2Flux, this.p2Phase, this.p2Wins);
+    this.setFighter(state.fighters[0], {
+      hp: this.p1Hp,
+      sta: this.p1Sta,
+      mag: this.p1Mag,
+      ult: this.p1Ult,
+      phase: this.p1Phase,
+      wins: this.p1Wins,
+    });
+    this.setFighter(state.fighters[1], {
+      hp: this.p2Hp,
+      sta: this.p2Sta,
+      mag: this.p2Mag,
+      ult: this.p2Ult,
+      phase: this.p2Phase,
+      wins: this.p2Wins,
+    });
 
     const secs = Math.ceil(state.timer / TICK_RATE);
     this.timer.textContent = String(Math.max(0, secs));
@@ -65,6 +86,22 @@ export class Hud {
       const w1 = info?.p2Name?.toUpperCase() ?? 'P2';
       banner =
         state.matchWinner === 0 ? `${w0} WINS` : state.matchWinner === 1 ? `${w1} WINS` : 'DRAW';
+    } else {
+      // Live callouts
+      for (const e of state.events) {
+        if (e.type === 'ultimate_ready') {
+          banner = e.slot === 0 ? 'P1 AWAKENING READY' : 'P2 AWAKENING READY';
+        } else if (e.type === 'ultimate_activated') {
+          banner = 'AWAKENING!';
+        } else if (e.type === 'resource_denied') {
+          banner =
+            e.resource === 'ultimate'
+              ? 'NEED FULL AWAKENING'
+              : e.resource === 'stamina'
+                ? 'NO STAMINA'
+                : 'NO MAGIC';
+        }
+      }
     }
     this.banner.textContent = banner;
 
@@ -86,12 +123,24 @@ export class Hud {
     }, 50);
   }
 
+  flashUltimate(): void {
+    this.ultFlash.hidden = false;
+    this.ultFlash.classList.add('on');
+    window.setTimeout(() => {
+      this.ultFlash.classList.remove('on');
+    }, 280);
+  }
+
   private setFighter(
     f: FighterState,
-    hpEl: HTMLElement,
-    fluxEl: HTMLElement,
-    phaseEl: HTMLElement,
-    winsEl: HTMLElement,
+    els: {
+      hp: HTMLElement;
+      sta: HTMLElement;
+      mag: HTMLElement;
+      ult: HTMLElement;
+      phase: HTMLElement;
+      wins: HTMLElement;
+    },
   ): void {
     let maxHp = 1000;
     try {
@@ -99,13 +148,19 @@ export class Hud {
     } catch {
       maxHp = 1000;
     }
-    const hpPct = Math.max(0, Math.min(100, (f.hp / Math.max(1, maxHp)) * 100));
-    const fluxPct = Math.max(0, Math.min(100, (f.flux / MAX_FLUX) * 100));
-    hpEl.style.width = `${hpPct}%`;
-    fluxEl.style.width = `${fluxPct}%`;
-    phaseEl.textContent = f.move ? `${f.phase}:${f.move.moveId}` : f.phase;
-    winsEl.textContent = winsDots(f.wins);
+    const ult = f.ultimate ?? f.flux ?? 0;
+    els.hp.style.width = `${pct(f.hp, maxHp)}%`;
+    els.sta.style.width = `${pct(f.stamina ?? 0, MAX_STAMINA)}%`;
+    els.mag.style.width = `${pct(f.magic ?? 0, MAX_MAGIC)}%`;
+    els.ult.style.width = `${pct(ult, MAX_ULTIMATE)}%`;
+    els.ult.classList.toggle('full', ult >= MAX_ULTIMATE);
+    els.phase.textContent = f.move ? `${f.phase}:${f.move.moveId}` : f.phase;
+    els.wins.textContent = winsDots(f.wins);
   }
+}
+
+function pct(v: number, max: number): number {
+  return Math.max(0, Math.min(100, (v / Math.max(1, max)) * 100));
 }
 
 function el(id: string): HTMLElement {

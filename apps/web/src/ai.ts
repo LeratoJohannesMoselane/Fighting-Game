@@ -156,22 +156,35 @@ export class CpuController {
     }
 
     if (adist > 2000) {
-      // Mid — mix approach, bolt, spell
+      // Mid — mix approach, bolt, spell (skip guns if drained)
       this.faceToward(actions, towardRight);
       const r = this.next();
-      if (r < t.rangedBias) actions.ranged = true;
-      else if (r < t.rangedBias + 0.18) actions.ability1 = true;
+      const canGun = (me.stamina ?? 0) >= 18 && (me.magic ?? 0) >= 12;
+      const canSpell = (me.magic ?? 0) >= 28;
+      if (canGun && r < t.rangedBias) actions.ranged = true;
+      else if (canSpell && r < t.rangedBias + 0.18) actions.ability1 = true;
       else if (r < t.aggression) {
-        /* walk in via faceToward */
+        /* walk in */
       } else if (r < t.aggression + 0.12 && me.y === 0) {
         actions.jump = true;
       } else {
-        // slight back walk
         this.faceToward(actions, !towardRight);
       }
       this.commit(actions, 5 + ((this.next() * 8) | 0));
       return actions;
     }
+
+    // Full Awakening — fire ultimate when ready and in range
+    const ult = me.ultimate ?? me.flux ?? 0;
+    if (ult >= 100 && adist < 2800 && me.magic >= 30 && this.next() < 0.55 + t.aggression * 0.3) {
+      actions.ultimate = true;
+      this.faceToward(actions, towardRight);
+      this.commit(actions, 4);
+      return actions;
+    }
+
+    // Low resources — prefer melee to refill instead of gun spam
+    const lowGas = (me.stamina ?? 0) < 25 || (me.magic ?? 0) < 20;
 
     // Close range
     this.faceToward(actions, towardRight);
@@ -186,15 +199,14 @@ export class CpuController {
     } else if (r < 0.12 + t.jumpChance && me.y === 0) {
       actions.jump = true;
       if (this.next() < 0.5) this.faceToward(actions, towardRight);
-    } else if (r < 0.45 * t.aggression + 0.25) {
+    } else if (lowGas || r < 0.45 * t.aggression + 0.3) {
       actions.light = true;
-    } else if (r < 0.45 * t.aggression + 0.4) {
+    } else if (r < 0.45 * t.aggression + 0.48) {
       actions.heavy = true;
-    } else if (r < 0.45 * t.aggression + 0.55) {
+    } else if (!lowGas && r < 0.45 * t.aggression + 0.6) {
       actions.ability1 = true;
-    } else if (r < 0.85) {
+    } else if (!lowGas && r < 0.85) {
       actions.dash = true;
-      // sometimes dash through
       if (this.next() < 0.35) this.faceToward(actions, towardRight);
       else this.faceToward(actions, !towardRight);
     } else {

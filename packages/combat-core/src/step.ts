@@ -2,11 +2,14 @@ import {
   BODY_HALF_WIDTH,
   DASH_ACTIVE_FRAMES,
   DASH_RECOVERY_FRAMES,
+  DASH_STAMINA_COST,
   DEFAULT_HITSTOP_FRAMES,
   GRAVITY,
   GROUND_Y,
-  MAX_FLUX,
+  MAX_MAGIC,
   MAX_ROUNDS,
+  MAX_STAMINA,
+  MAX_ULTIMATE,
   ROUND_END_FRAMES,
   ROUND_INTRO_FRAMES,
   ROUNDS_TO_WIN,
@@ -235,15 +238,26 @@ function tryStartAction(s: GameState, f: FighterState, input: ActionBits): void 
   // Cancel into another move if currently attacking and cancel window allows — handled in advanceAttack.
   if (f.phase === 'attack') return;
 
-  // Dash
+  // Dash (costs stamina)
   const dashBuf = bufferHas(f.inputBuffer, 'dash');
   if (dashBuf.hit && onGround && f.phase !== 'hitstun' && f.phase !== 'blockstun') {
-    startDash(f, input);
+    if (f.stamina >= DASH_STAMINA_COST) {
+      f.stamina = clamp(f.stamina - DASH_STAMINA_COST, 0, MAX_STAMINA);
+      startDash(f, input);
+      f.inputBuffer = consumeBufferAction(f.inputBuffer, 'dash');
+      return;
+    }
+    s.events.push({
+      type: 'resource_denied',
+      slot: f.slot,
+      resource: 'stamina',
+      moveId: 'dash',
+      tick: s.tick,
+    });
     f.inputBuffer = consumeBufferAction(f.inputBuffer, 'dash');
-    return;
   }
 
-  // Attack intents in priority order: heavy > light > ranged > spell(ability1)
+  // Attack intents: ultimate > heavy > light > ranged > spell
   const tryMove = (key: keyof ActionBits, inputName: string): boolean => {
     const buf = bufferHas(f.inputBuffer, key);
     if (!buf.hit) return false;
@@ -251,19 +265,65 @@ function tryStartAction(s: GameState, f: FighterState, input: ActionBits): void 
     if (!move) return false;
     const cd = f.cooldowns[move.id] ?? 0;
     if (cd > 0) return false;
-    if (!onGround && inputName !== 'RANGED') return false; // greybox: grounded melee/spell
+    if (!onGround && inputName !== 'RANGED') return false;
+
+    const denied = resourceGate(f, move);
+    if (denied) {
+      s.events.push({
+        type: 'resource_denied',
+        slot: f.slot,
+        resource: denied,
+        moveId: move.id,
+        tick: s.tick,
+      });
+      f.inputBuffer = consumeBufferAction(f.inputBuffer, key);
+      return false;
+    }
+
+    spendResources(f, move);
     startMove(s, f, move);
     f.inputBuffer = consumeBufferAction(f.inputBuffer, key);
     return true;
   };
 
-  // Guard blocks starting attacks except we already returned early if only guarding —
-  // allow attacks to break guard stance when pressed.
+  if (tryMove('ultimate', 'ULTIMATE')) return;
   if (tryMove('heavy', 'HEAVY')) return;
   if (tryMove('light', 'LIGHT')) return;
   if (tryMove('ranged', 'RANGED')) return;
-  // ability1 maps to SPELL for greybox
   if (tryMove('ability1', 'SPELL')) return;
+}
+
+/** Returns which resource is missing, or null if affordable. */
+function resourceGate(f: FighterState, move: MoveData): 'stamina' | 'magic' | 'ultimate' | null {
+  const stam = move.staminaCost ?? 0;
+  const mag = move.magicCost ?? move.fluxCost ?? 0;
+  const ult = move.ultimateCost ?? (move.isUltimate ? MAX_ULTIMATE : 0);
+  if (ult > 0 && f.ultimate < ult) return 'ultimate';
+  if (stam > 0 && f.stamina < stam) return 'stamina';
+  if (mag > 0 && f.magic < mag) return 'magic';
+  return null;
+}
+
+function spendResources(f: FighterState, move: MoveData): void {
+  const stam = move.staminaCost ?? 0;
+  const mag = move.magicCost ?? move.fluxCost ?? 0;
+  const ult = move.ultimateCost ?? (move.isUltimate ? MAX_ULTIMATE : 0);
+  if (stam > 0) f.stamina = clamp(f.stamina - stam, 0, MAX_STAMINA);
+  if (mag > 0) f.magic = clamp(f.magic - mag, 0, MAX_MAGIC);
+  if (ult > 0) {
+    f.ultimate = clamp(f.ultimate - ult, 0, MAX_ULTIMATE);
+    f.flux = f.ultimate;
+  }
+}
+
+function gainUltimate(f: FighterState, amount: number, s: GameState): void {
+  if (amount <= 0) return;
+  const before = f.ultimate;
+  f.ultimate = clamp(f.ultimate + amount, 0, MAX_ULTIMATE);
+  f.flux = f.ultimate;
+  if (before < MAX_ULTIMATE && f.ultimate >= MAX_ULTIMATE) {
+    s.events.push({ type: 'ultimate_ready', slot: f.slot, tick: s.tick });
+  }
 }
 
 function startMove(s: GameState, f: FighterState, move: MoveData): void {
@@ -290,6 +350,16 @@ function startMove(s: GameState, f: FighterState, move: MoveData): void {
     moveId: move.id,
     tick: s.tick,
   });
+  if (move.isUltimate || move.input === 'ULTIMATE') {
+    s.events.push({
+      type: 'ultimate_activated',
+      slot: f.slot,
+      moveId: move.id,
+      tick: s.tick,
+    });
+    // Cinematic hitstop feel on activation
+    s.globalHitstop = Math.max(s.globalHitstop, 8);
+  }
 }
 
 function moveDuration(move: MoveData): number {
@@ -339,8 +409,8 @@ function advanceAttack(s: GameState, f: FighterState): void {
 function tryCancel(s: GameState, f: FighterState, current: MoveData): void {
   if (!current.cancelTo.length) return;
   const kit = getKit(f.id);
-  // Check buffered attacks against cancel list
   const candidates: { key: keyof ActionBits; input: string }[] = [
+    { key: 'ultimate', input: 'ULTIMATE' },
     { key: 'heavy', input: 'HEAVY' },
     { key: 'light', input: 'LIGHT' },
     { key: 'ranged', input: 'RANGED' },
@@ -360,6 +430,9 @@ function tryCancel(s: GameState, f: FighterState, current: MoveData): void {
       }
     }
     if (!allowed) continue;
+    const denied = resourceGate(f, next);
+    if (denied) continue;
+    spendResources(f, next);
     f.inputBuffer = consumeBufferAction(f.inputBuffer, c.key);
     startMove(s, f, next);
     return;
@@ -585,7 +658,28 @@ function applyHitOrBlock(
 
   // Hit
   applyDamage(s, defender, move.onHit.damage);
-  attacker.flux = clamp(attacker.flux + move.onHit.fluxGain, 0, MAX_FLUX);
+
+  // Ultimate meter (anime super gauge) — fluxGain field feeds ultimate.
+  gainUltimate(attacker, move.onHit.fluxGain, s);
+  const defUlt = move.onHit.defenderUltGain ?? Math.max(1, (move.onHit.fluxGain / 2) | 0);
+  gainUltimate(defender, defUlt, s);
+
+  // Physical combat restores stamina & magic (guns/projectiles restore little/none).
+  const isMelee = move.input === 'LIGHT' || move.input === 'HEAVY' || move.input === 'ULTIMATE';
+  if (isMelee) {
+    const stamGain = move.onHit.staminaGain ?? (move.input === 'HEAVY' ? 14 : 10);
+    const magGain = move.onHit.magicGain ?? (move.input === 'HEAVY' ? 12 : 8);
+    attacker.stamina = clamp(attacker.stamina + stamGain, 0, MAX_STAMINA);
+    attacker.magic = clamp(attacker.magic + magGain, 0, MAX_MAGIC);
+    // Defender also recovers a trickle for trading (anime resilience).
+    defender.stamina = clamp(defender.stamina + 3, 0, MAX_STAMINA);
+    defender.magic = clamp(defender.magic + 2, 0, MAX_MAGIC);
+  } else if (move.input === 'SPELL') {
+    // Spells give small ult only (already applied); tiny stamina drip on hit.
+    attacker.stamina = clamp(attacker.stamina + (move.onHit.staminaGain ?? 2), 0, MAX_STAMINA);
+  }
+  // Ranged: no stamina/magic restore — must press in with fists.
+
   defender.phase = 'hitstun';
   defender.stunFrames = move.onHit.hitStun;
   defender.move = null;
@@ -604,9 +698,10 @@ function applyHitOrBlock(
     tick: s.tick,
   });
 
-  attacker.hitstop = DEFAULT_HITSTOP_FRAMES;
-  defender.hitstop = DEFAULT_HITSTOP_FRAMES;
-  s.globalHitstop = DEFAULT_HITSTOP_FRAMES;
+  const stop = move.isUltimate ? 12 : DEFAULT_HITSTOP_FRAMES;
+  attacker.hitstop = stop;
+  defender.hitstop = stop;
+  s.globalHitstop = stop;
 }
 
 function applyDamage(s: GameState, defender: FighterState, amount: number): void {
