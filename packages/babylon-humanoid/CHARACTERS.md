@@ -7,7 +7,9 @@ where, and how the four fighters are built from them.
 
 ## 1. Copy these files
 
-Create three folders under your public assets directory and copy from the pack:
+**For the demo**, that folder is
+`packages/babylon-humanoid/demo/public/characters/` (already created for you).
+In your own app it's whatever your static/public directory is.
 
 ```
 public/characters/
@@ -57,7 +59,19 @@ public/characters/
 
 ---
 
-## 2. Use it
+## 2. Run the demo
+
+```bash
+pnpm install                                        # first time only
+pnpm --filter @aether-break/babylon-humanoid demo
+```
+
+Open <http://localhost:5180>. If anything is missing the page lists the exact
+file paths — it won't just show a blank canvas.
+
+---
+
+## 3. Use it in your own code
 
 ```ts
 import { createAetherRoster, placeFighters, resolveClip } from '@aether-break/babylon-humanoid';
@@ -87,7 +101,7 @@ every animation.
 
 ---
 
-## 3. How each fighter is built
+## 4. How each fighter is built
 
 Two base bodies become four distinct characters:
 
@@ -122,7 +136,7 @@ Available hairstyles: `Hair_Beard`, `Hair_Buns`, `Hair_Buzzed`,
 
 ---
 
-## 4. Performance
+## 5. Performance
 
 - **One factory per body type, not per character.** Nyra and Iria share the
   female body's geometry and textures on the GPU; only materials and skeletons
@@ -136,7 +150,7 @@ Available hairstyles: `Hair_Beard`, `Hair_Buns`, `Hair_Buzzed`,
 
 ---
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
 | Symptom | Cause |
 | --- | --- |
@@ -150,7 +164,7 @@ Available hairstyles: `Hair_Beard`, `Hair_Buns`, `Hair_Buzzed`,
 
 ---
 
-## 6. What I could not verify
+## 7. What I could not verify
 
 I don't have your actual pack files, so these are assumptions worth checking on
 first run:

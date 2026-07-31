@@ -1,11 +1,13 @@
 /**
- * Runnable demo — procedural character driven by Quaternius .glb animations.
+ * Aether Break — 3D character demo.
  *
- *   pnpm --filter @aether-break/babylon-humanoid demo
+ * Put your files in `demo/public/characters/` (see the README in that folder),
+ * then run:
  *
- * Drop your .glb files into `demo/public/animations/` first. If none are
- * found the demo still runs: you get the character in its T-pose bind pose
- * plus a clear on-screen message telling you what to do.
+ *     pnpm --filter @aether-break/babylon-humanoid demo
+ *
+ * The demo checks which files are present at startup and tells you on screen
+ * exactly what's missing, so you never have to guess from a blank canvas.
  */
 
 import { Engine } from '@babylonjs/core/Engines/engine';
@@ -17,71 +19,70 @@ import { Vector3 } from '@babylonjs/core/Maths/math.vector';
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color';
 import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder';
 import { GridMaterial } from '@babylonjs/materials/grid/gridMaterial';
-import { SkeletonViewer } from '@babylonjs/core/Debug/skeletonViewer';
 import '@babylonjs/core/Rendering/depthRendererSceneComponent';
 import '@babylonjs/loaders/glTF/2.0';
 
 import {
-  createRoster,
-  CharacterController,
+  AETHER_CHARACTERS,
+  createAetherRoster,
   createProceduralCharacter,
-  loadRiggedCharacter,
-  describeRig,
   inspectGlb,
+  placeFighters,
   UNITY_SCHEME,
-  detectScheme,
-  type AnimatableCharacter,
-  type NamingScheme,
+  type AetherFighter,
 } from '../src/index';
 import { HUMANOID_ORDER } from '../src/humanoidRig';
 
-/**
- * CONFIG — matches the real Universal Animation Library 2 [Standard] layout.
- *
- * Copy these two files out of the extracted pack into demo/public/animations/ :
- *
- *   Female Mannequin/Unreal-Godot/Mannequin_F.glb   → the CHARACTER model
- *   Unreal-Godot/UAL2_Standard.glb                  → ALL the animations
- *
- * (`UAL2_Standard_RM.glb` is the same clips WITH root motion — the character
- *  travels through space. Use the plain one for in-place locomotion.)
- */
+/* ------------------------------------------------------------------ */
+/* Paths — everything lives under demo/public/characters/              */
+/* ------------------------------------------------------------------ */
 
-/** The rigged character. Set to null to use the procedural box-man instead. */
-const MODEL_URL: string | null = '/animations/Mannequin_F.glb';
-
-/** The combined animation library — every clip lives in this one file. */
-const LIBRARY_URL: string | null = '/animations/UAL2_Standard.glb';
+const BODIES_URL = '/characters/bodies/';
+const HAIR_URL = '/characters/hair/';
+const LIBRARY_URL = '/characters/animations/UAL2_Standard.glb';
 
 /**
- * Only load these clips (the library holds 40+ in the free tier).
- * Leave empty to load everything, then read the real names off the buttons.
+ * Files the demo needs. The pack ships .gltf, but .glb works identically, so
+ * each entry is probed with both extensions and whichever exists is used.
  */
-const LIBRARY_ONLY: string[] = [];
+const BODY_FILES = {
+  female: 'Superhero_Female_FullBody',
+  male: 'Superhero_Male_FullBody',
+} as const;
 
-/** Map the pack's clip names onto your own gameplay keys. */
-const RENAME: Record<string, string> = {};
+const HAIR_FILES = [
+  'Hair_Long',
+  'Hair_Beard',
+  'Hair_Buns',
+  'Hair_Buzzed',
+  'Eyebrows_Female',
+  'Eyebrows_Regular',
+];
+
+/* ------------------------------------------------------------------ */
+/* Scene                                                               */
+/* ------------------------------------------------------------------ */
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
 const engine = new Engine(canvas, true, { stencil: true, antialias: true });
 const scene = new Scene(engine);
 scene.clearColor = new Color4(0.05, 0.06, 0.1, 1);
 
-const camera = new ArcRotateCamera('cam', -Math.PI / 2, 1.15, 4.5, new Vector3(0, 0.95, 0), scene);
+const camera = new ArcRotateCamera('cam', -Math.PI / 2, 1.15, 6, new Vector3(0, 1, 0), scene);
 camera.attachControl(canvas, true);
 camera.wheelDeltaPercentage = 0.02;
 camera.lowerRadiusLimit = 1.5;
-camera.upperRadiusLimit = 14;
+camera.upperRadiusLimit = 20;
 
 const hemi = new HemisphericLight('hemi', new Vector3(0.2, 1, 0.1), scene);
-hemi.intensity = 0.75;
+hemi.intensity = 0.8;
 hemi.groundColor = new Color3(0.16, 0.17, 0.24);
 
 const key = new DirectionalLight('key', new Vector3(-0.5, -1, 0.6), scene);
 key.position = new Vector3(4, 8, -5);
 key.intensity = 1.1;
 
-const ground = CreateGround('ground', { width: 24, height: 24 }, scene);
+const ground = CreateGround('ground', { width: 30, height: 30 }, scene);
 const grid = new GridMaterial('grid', scene);
 grid.majorUnitFrequency = 5;
 grid.gridRatio = 0.5;
@@ -90,187 +91,194 @@ grid.lineColor = new Color3(0.22, 0.3, 0.45);
 grid.opacity = 0.96;
 ground.material = grid;
 
-// ---------------------------------------------------------------------------
-// Character
-// ---------------------------------------------------------------------------
-
-/**
- * The rig is created with UNITY_SCHEME by default. If your .glb turns out to
- * use different names, the loader still bridges it semantically — and the
- * on-screen report will tell you exactly what was detected.
- */
-const scheme: NamingScheme = UNITY_SCHEME;
-let character: AnimatableCharacter = createProceduralCharacter(scene, { scheme, name: 'hero' });
-let controller = new CharacterController(scene, character);
-let viewer: SkeletonViewer | null = null;
-
 const hud = document.getElementById('hud')!;
 const buttonBar = document.getElementById('buttons')!;
 const log = document.getElementById('log')!;
-
-function setLog(html: string): void {
+const setLog = (html: string) => {
   log.innerHTML = html;
+};
+
+/* ------------------------------------------------------------------ */
+/* Startup                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Check an asset really exists.
+ *
+ * A plain `res.ok` is not enough: Vite's dev server answers `200 text/html`
+ * (the SPA index) for any path it can't find, so a missing .gltf would look
+ * present and then blow up later with an opaque parse error. Rejecting HTML
+ * responses is what makes the "missing files" message trustworthy.
+ */
+async function exists(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, { method: 'HEAD' });
+    if (!res.ok) return false;
+    const type = res.headers.get('content-type') ?? '';
+    return !type.includes('text/html');
+  } catch {
+    return false;
+  }
 }
 
-function rebuildButtons(keys: string[]): void {
+function missingFilesHelp(missing: string[]): string {
+  return (
+    `<span class="warn">Missing ${missing.length} required file(s):</span><br>` +
+    missing.map((m) => `&nbsp;&nbsp;• <code>${m}</code>`).join('<br>') +
+    `<br><br><b>Copy them from the extracted pack into</b><br>` +
+    `<code>demo/public/characters/</code> — see the README in that folder.<br><br>` +
+    `<b>Remember:</b> every <code>.gltf</code> needs its <code>.bin</code> ` +
+    `and textures in the same folder.`
+  );
+}
+
+let fighters: AetherFighter[] = [];
+
+/** Return the first extension that actually exists, or null. */
+async function findAsset(base: string, name: string): Promise<string | null> {
+  for (const ext of ['.gltf', '.glb']) {
+    if (await exists(`${base}${name}${ext}`)) return `${name}${ext}`;
+  }
+  return null;
+}
+
+async function boot(): Promise<void> {
+  setLog('Checking assets…');
+
+  const female = await findAsset(BODIES_URL, BODY_FILES.female);
+  const male = await findAsset(BODIES_URL, BODY_FILES.male);
+  const libraryOk = await exists(LIBRARY_URL);
+
+  const missing: string[] = [];
+  if (!female) missing.push(`${BODIES_URL}${BODY_FILES.female}.gltf`);
+  if (!male) missing.push(`${BODIES_URL}${BODY_FILES.male}.gltf`);
+  if (!libraryOk) missing.push(LIBRARY_URL);
+
+  if (missing.length > 0 || !female || !male) {
+    // Nothing to load — show the procedural stand-in so the scene isn't empty.
+    createProceduralCharacter(scene, { scheme: UNITY_SCHEME, name: 'placeholder' });
+    setLog(missingFilesHelp(missing));
+    return;
+  }
+
+  let hairAvailable = true;
+  for (const h of HAIR_FILES) {
+    if (!(await findAsset(HAIR_URL, h))) {
+      hairAvailable = false;
+      break;
+    }
+  }
+
+  setLog('Loading characters…');
+
+  // Report the rig so bone-naming surprises surface immediately.
+  let rigNote = '';
+  try {
+    const info = await inspectGlb(scene, `${BODIES_URL}${female}`);
+    rigNote =
+      `<b>Rig:</b> ${info.detected.schemeName} — ` +
+      `${info.detected.matched.length}/${HUMANOID_ORDER.length} slots, ` +
+      `${info.boneNames.length} bones<br>`;
+    if (info.detected.missing.length) {
+      rigNote += `<span class="warn">Unmapped: ${info.detected.missing.join(', ')}</span><br>`;
+    }
+  } catch {
+    /* non-fatal */
+  }
+
+  const roster = await createAetherRoster(scene, {
+    bodiesUrl: BODIES_URL,
+    hairUrl: HAIR_URL,
+    libraryUrl: LIBRARY_URL,
+    bodyFiles: { female, male },
+    skipHair: !hairAvailable,
+  });
+
+  const ids = Object.keys(AETHER_CHARACTERS);
+  fighters = [];
+  for (let i = 0; i < ids.length; i++) {
+    const fighter = await roster.spawn(ids[i]!);
+    fighter.root.position.x = (i - (ids.length - 1) / 2) * 1.6;
+    fighter.setFacing(1);
+    fighter.playKey('idle');
+    fighters.push(fighter);
+  }
+
+  buildControls();
+  setLog(
+    rigNote +
+      `<b>${fighters.length} fighters</b> from 2 base bodies.` +
+      (hairAvailable ? '' : `<br><span class="warn">Hair files not found — bodies only.</span>`) +
+      `<br>Click an animation to play it on everyone.`,
+  );
+}
+
+/** Animation buttons + a versus-stance toggle. */
+function buildControls(): void {
   buttonBar.replaceChildren();
+
+  const keys = ['idle', 'walk', 'light', 'heavy', 'dash', 'guard', 'hitstun', 'ultimate'] as const;
   for (const k of keys) {
     const b = document.createElement('button');
     b.textContent = k.toUpperCase();
     b.onclick = () => {
-      controller.play(k);
-      highlight(k);
+      for (const f of fighters) f.playKey(k);
+      for (const other of buttonBar.querySelectorAll('button')) {
+        other.classList.toggle('active', other === b);
+      }
     };
-    b.dataset.key = k;
     buttonBar.appendChild(b);
   }
 
-  const toggle = document.createElement('button');
-  toggle.textContent = 'SKELETON';
-  toggle.className = 'ghost';
-  toggle.onclick = () => {
-    if (viewer) {
-      viewer.dispose();
-      viewer = null;
-      return;
-    }
-    // Either character shape works; find any mesh bound to this skeleton.
-    const skinned = scene.meshes.find((m) => m.skeleton === character.skeleton);
-    if (!skinned) return;
-    viewer = new SkeletonViewer(character.skeleton, skinned, scene, false, 3, {
-      displayMode: SkeletonViewer.DISPLAY_SPHERE_AND_SPURS,
+  const vs = document.createElement('button');
+  vs.textContent = 'VS STANCE';
+  vs.className = 'ghost';
+  vs.onclick = () => {
+    if (fighters.length < 2) return;
+    // Show the first two as an actual matchup, hide the rest.
+    placeFighters(fighters[0]!, fighters[1]!, 6.8);
+    fighters.slice(2).forEach((f, i) => {
+      f.root.position.set((i - 0.5) * 1.6, 0, 4);
     });
-    viewer.isEnabled = true;
+    camera.setTarget(new Vector3(0, 1, 0));
+    camera.radius = 9;
   };
-  buttonBar.appendChild(toggle);
-}
+  buttonBar.appendChild(vs);
 
-function highlight(active: string): void {
-  for (const b of buttonBar.querySelectorAll('button')) {
-    b.classList.toggle('active', (b as HTMLButtonElement).dataset.key === active);
-  }
-}
-
-async function boot(): Promise<void> {
-  setLog('Loading…');
-  let note = '';
-
-  // ---- 1. Character: real model if provided, else the procedural box-man ----
-  if (MODEL_URL) {
-    try {
-      const model = await loadRiggedCharacter(scene, MODEL_URL, { name: 'mannequin' });
-      const desc = describeRig(model);
-      character.dispose();
-      controller.dispose();
-      character = model;
-      controller = new CharacterController(scene, character);
-      note +=
-        `<b>Model:</b> <code>${MODEL_URL}</code> — ` +
-        `${desc.boneCount} bones, ${desc.mappedSlots.length}/${HUMANOID_ORDER.length} humanoid slots mapped<br>`;
-    } catch {
-      note +=
-        `<span class="warn">Could not load <code>${MODEL_URL}</code></span> — ` +
-        `using the procedural character instead.<br>`;
-    }
-  }
-
-  // ---- 2. Inspect the animation source so nothing is guesswork ----
-  const probeUrl = LIBRARY_URL ?? MODEL_URL;
-  if (probeUrl) {
-    try {
-      const info = await inspectGlb(scene, probeUrl);
-      note +=
-        `<b>Rig naming:</b> ${info.detected.schemeName} ` +
-        `(${info.detected.matched.length}/${HUMANOID_ORDER.length} slots)<br>` +
-        `<b>Clips in file:</b> ${info.animationGroupNames.length}<br>`;
-    } catch {
-      note +=
-        `<span class="warn">Could not read <code>${probeUrl}</code>.</span> ` +
-        `Put the pack's .glb files in <code>demo/public/animations/</code>.<br>`;
-    }
-  }
-
-  // ---- 3. Animations ----
-  let loaded: string[] = [];
-  if (LIBRARY_URL) {
-    try {
-      loaded = await controller.loadLibrary(LIBRARY_URL, {
-        ...(LIBRARY_ONLY.length ? { only: LIBRARY_ONLY } : {}),
-        ...(Object.keys(RENAME).length ? { rename: RENAME } : {}),
-      });
-    } catch {
-      /* reported below */
-    }
-  }
-
-  if (loaded.length === 0) {
-    setLog(
-      note +
-        `<span class="warn">No animations loaded.</span> Showing the bind pose.<br><br>` +
-        `<b>To fix:</b> copy <code>Unreal-Godot/UAL2_Standard.glb</code> and ` +
-        `<code>Female Mannequin/Unreal-Godot/Mannequin_F.glb</code> from the pack into ` +
-        `<code>demo/public/animations/</code>, then reload.`,
-    );
-    rebuildButtons([]);
-    return;
-  }
-
-  rebuildButtons(loaded);
-  controller.play(loaded[0]!);
-  highlight(loaded[0]!);
-  setLog(note + `<b>Loaded ${loaded.length} clip(s).</b> Click a name to play it.`);
-}
-
-/**
- * Roster line-up: every Aether Break character on the SAME Mannequin_F.glb,
- * told apart by tint, build and idle clip. Runs after boot() if the model and
- * library both loaded.
- */
-async function showRoster(): Promise<void> {
-  if (!MODEL_URL || !LIBRARY_URL) return;
-  try {
-    const roster = await createRoster(scene, {
-      modelUrl: MODEL_URL,
-      libraryUrl: LIBRARY_URL,
+  const lineUp = document.createElement('button');
+  lineUp.textContent = 'LINE-UP';
+  lineUp.className = 'ghost';
+  lineUp.onclick = () => {
+    fighters.forEach((f, i) => {
+      f.root.position.set((i - (fighters.length - 1) / 2) * 1.6, 0, 0);
+      f.setFacing(1);
     });
-    // Hide the single demo character; the line-up replaces it.
-    character.dispose();
-    controller.dispose();
-
-    const ids = ['nyra_vex', 'bram_kade', 'iria_sol', 'kellan_wisp'];
-    ids.forEach((id, i) => {
-      const rig = roster.spawn(id);
-      rig.root.position.x = (i - (ids.length - 1) / 2) * 1.5;
-      rig.setFacing(1);
-      rig.playKey('idle');
-    });
-    camera.setTarget(new Vector3(0, 0.95, 0));
-    camera.radius = 7;
-    setLog(
-      `<b>Roster line-up</b> — all four fighters from one ` +
-        `<code>Mannequin_F.glb</code>.<br>` +
-        `Told apart by tint, build and idle clip.`,
-    );
-  } catch (err) {
-    console.error('roster line-up failed', err);
-  }
+    camera.setTarget(new Vector3(0, 1, 0));
+    camera.radius = 6;
+  };
+  buttonBar.appendChild(lineUp);
 }
 
-// Set to true to see the whole roster instead of a single clip browser.
-const SHOW_ROSTER = false;
-
-void (SHOW_ROSTER ? showRoster() : boot());
+void boot().catch((err) => {
+  console.error(err);
+  setLog(
+    `<span class="warn">Startup failed.</span><br><code>${String(err)}</code><br><br>` +
+      `Check the browser console, and confirm each <code>.gltf</code> sits ` +
+      `next to its <code>.bin</code>.`,
+  );
+});
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener('resize', () => engine.resize());
 
-// Expose for console poking.
+// Console helpers.
 (window as unknown as Record<string, unknown>).demo = {
   scene,
-  character,
-  controller,
-  inspectGlb: (url: string) => inspectGlb(scene, url).then(console.log),
-  detectScheme,
+  get fighters() {
+    return fighters;
+  },
+  inspect: (url: string) => inspectGlb(scene, url).then(console.log),
+  AETHER_CHARACTERS,
 };
 
 hud.classList.remove('hidden');

@@ -18,7 +18,7 @@ pnpm add @babylonjs/core @babylonjs/loaders
 
 Download **Universal Animation Library 2 [Standard]** (free, CC0) from
 <https://quaternius.itch.io/universal-animation-library-2> and copy two files
-into `packages/babylon-humanoid/demo/public/animations/`:
+into `packages/babylon-humanoid/demo/public/characters/`:
 
 | Copy | From the pack | It is |
 | --- | --- | --- |
@@ -26,9 +26,10 @@ into `packages/babylon-humanoid/demo/public/animations/`:
 | `UAL2_Standard.glb` | `Unreal-Godot/` | **All animations** in one file |
 
 ```
-demo/public/animations/
-├── Mannequin_F.glb
-└── UAL2_Standard.glb
+demo/public/characters/
+├── bodies/     Mannequin_F.glb  or  Superhero_*_FullBody.gltf + .bin
+├── hair/       Hair_*.gltf + .bin        (optional)
+└── animations/ UAL2_Standard.glb
 ```
 
 **Ignore the `Unity/` folder** — it holds `.fbx`, which Babylon cannot load.
@@ -41,7 +42,7 @@ travels through space). Start with the plain file.
 **Keep the original filenames** — clip names live *inside* the `.glb`, and you
 map them to your own keys in code.
 
-Full placement guide: [`demo/public/animations/README.md`](demo/public/animations/README.md)
+Full placement guide: [`demo/public/characters/README.md`](demo/public/characters/README.md)
 
 ### 3. Find out what the bones are actually called ← **do not skip this**
 
@@ -50,7 +51,7 @@ There is no universal bone-naming standard. Run this once and read the console:
 ```ts
 import { printGlbBoneNames } from '@aether-break/babylon-humanoid';
 
-await printGlbBoneNames(scene, '/animations/UAL2_Standard.glb');
+await printGlbBoneNames(scene, '/characters/animations/UAL2_Standard.glb');
 ```
 
 ```
@@ -71,7 +72,7 @@ exact skeleton the animations were authored for, so retargeting is a perfect
 ```ts
 import { loadRiggedCharacter } from '@aether-break/babylon-humanoid';
 
-const hero = await loadRiggedCharacter(scene, '/animations/Mannequin_F.glb');
+const hero = await loadRiggedCharacter(scene, '/characters/bodies/Mannequin_F.glb');
 ```
 
 **Option B — generate one in code** (no asset needed at all):
@@ -93,7 +94,7 @@ import { CharacterController } from '@aether-break/babylon-humanoid';
 
 const controller = new CharacterController(scene, hero);
 
-await controller.loadLibrary('/animations/UAL2_Standard.glb', {
+await controller.loadLibrary('/characters/animations/UAL2_Standard.glb', {
   only:   ['Idle', 'Walk', 'Sword_Slash'],          // omit to load all
   rename: { Idle: 'idle', Walk: 'walk', Sword_Slash: 'attack' },
 });
@@ -119,8 +120,8 @@ spawns N independently-animated fighters from one model file, and
 
 ```ts
 const factory = await createFighterFactory(scene, {
-  modelUrl:   '/animations/Mannequin_F.glb',
-  libraryUrl: '/animations/UAL2_Standard.glb',
+  modelUrl:   '/characters/bodies/Mannequin_F.glb',
+  libraryUrl: '/characters/animations/UAL2_Standard.glb',
   only:    clipsUsedBy(DEFAULT_CLIP_MAP),
   rename:  renameFromClipMap(DEFAULT_CLIP_MAP),
   aliases: aliasesFor(DEFAULT_CLIP_MAP),
@@ -222,7 +223,7 @@ covering Mixamo→Unity and Unreal→Unity.
 pnpm --filter @aether-break/babylon-humanoid demo
 ```
 
-Then put your `.glb` files in `demo/public/animations/` and reload. With no
+Then put your files in `demo/public/characters/` and reload. With no
 files present it still runs and shows the character in its T-pose bind pose
 with instructions.
 

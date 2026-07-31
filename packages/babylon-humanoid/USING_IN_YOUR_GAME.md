@@ -15,8 +15,8 @@ factory and applies per-character identity for you:
 import { createRoster, resolveClip } from '@aether-break/babylon-humanoid';
 
 const roster = await createRoster(scene, {
-  modelUrl:   '/animations/Mannequin_F.glb',
-  libraryUrl: '/animations/UAL2_Standard.glb',
+  modelUrl:   '/characters/bodies/Mannequin_F.glb',
+  libraryUrl: '/characters/animations/UAL2_Standard.glb',
 });
 
 const p1 = roster.spawn('nyra_vex', 'p1');   // cyan, slim, throws
@@ -90,8 +90,8 @@ import {
 
 // 1. Load the model + library ONCE.
 const factory = await createFighterFactory(scene, {
-  modelUrl:   '/animations/Mannequin_F.glb',
-  libraryUrl: '/animations/UAL2_Standard.glb',
+  modelUrl:   '/characters/bodies/Mannequin_F.glb',
+  libraryUrl: '/characters/animations/UAL2_Standard.glb',
   only:    clipsUsedBy(DEFAULT_CLIP_MAP),      // only the ~15 clips we need
   rename:  renameFromClipMap(DEFAULT_CLIP_MAP), // SWORD_REGULAR_A → 'light'
   aliases: aliasesFor(DEFAULT_CLIP_MAP),        // keys sharing one clip
