@@ -1,0 +1,266 @@
+:root {
+  color-scheme: dark;
+  --bg: #070b12;
+  --panel: #0f1624;
+  --line: #1e2a3d;
+  --text: #e8eef7;
+  --muted: #8b9bb4;
+  --p1: #2ee6c5;
+  --p1-dim: #147a68;
+  --p2: #ff4d6d;
+  --p2-dim: #8a1e35;
+  --flux: #c084fc;
+  --warn: #fbbf24;
+  font-family:
+    'Segoe UI',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: radial-gradient(1200px 600px at 50% -10%, #152038 0%, transparent 60%), var(--bg);
+  color: var(--text);
+}
+
+#app {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 12px 16px 24px;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.logo {
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  font-size: 0.95rem;
+}
+
+.tag {
+  margin-left: 10px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.match-meta {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.fighter-hud .name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 8px;
+}
+
+.fighter-hud.p2 .name-row {
+  flex-direction: row;
+}
+
+.fighter-hud strong {
+  letter-spacing: 0.08em;
+  font-size: 0.9rem;
+}
+
+.fighter-hud.p1 strong {
+  color: var(--p1);
+}
+
+.fighter-hud.p2 strong {
+  color: var(--p2);
+}
+
+.wins {
+  color: var(--muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+}
+
+.bar {
+  height: 14px;
+  background: #121a28;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.bar.flux {
+  height: 8px;
+}
+
+.bar .fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  transition: width 60ms linear;
+}
+
+.p1 .hp .fill {
+  background: linear-gradient(90deg, var(--p1-dim), var(--p1));
+}
+
+.p2 .hp .fill {
+  background: linear-gradient(90deg, var(--p2), var(--p2-dim));
+  margin-left: auto;
+}
+
+.p1 .flux .fill,
+.p2 .flux .fill {
+  background: linear-gradient(90deg, #5b21b6, var(--flux));
+}
+
+.p2 .bar .fill {
+  transform-origin: right center;
+}
+
+.phase {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.fighter-hud.p2 .phase {
+  text-align: right;
+}
+
+.center-hud {
+  min-width: 120px;
+  text-align: center;
+  padding-top: 2px;
+}
+
+.timer {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.banner {
+  min-height: 1.2em;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--warn);
+  text-transform: uppercase;
+}
+
+.stage-wrap {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0a101c;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+#game {
+  display: block;
+  width: 100%;
+  height: auto;
+  vertical-align: middle;
+  background: #0a101c;
+}
+
+.hit-flash {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 55%);
+  opacity: 0;
+  transition: opacity 40ms linear;
+}
+
+.hit-flash.on {
+  opacity: 1;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.controls h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+}
+
+.controls p {
+  margin: 3px 0;
+}
+
+.controls .right {
+  text-align: right;
+}
+
+.controls .center {
+  text-align: center;
+  align-self: center;
+  color: var(--text);
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 1px 6px;
+  margin: 0 2px;
+  border: 1px solid #334155;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #111827;
+  color: #e2e8f0;
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 900px) {
+  .controls {
+    grid-template-columns: 1fr;
+  }
+  .controls .right,
+  .controls .center {
+    text-align: left;
+  }
+  .hud {
+    grid-template-columns: 1fr;
+  }
+}

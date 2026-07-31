@@ -28,6 +28,10 @@ importers:
         version: 2.1.8(@types/node@22.10.2)
 
   apps/web:
+    dependencies:
+      '@aether-break/combat-core':
+        specifier: workspace:*
+        version: link:../../packages/combat-core
     devDependencies:
       '@aether-break/config':
         specifier: workspace:*

@@ -38,11 +38,31 @@ corepack prepare pnpm@9.15.0 --activate
 pnpm install
 ```
 
+## Play the greybox (local 1v1)
+
+```bash
+pnpm install
+pnpm dev
+```
+
+Open the URL Vite prints (usually `http://localhost:5173/`).
+
+| | Player 1 (Nyra Vex) | Player 2 (Bram Kade) |
+|--|---------------------|----------------------|
+| Move | `A` `D` | `←` `→` |
+| Jump / crouch | `W` / `S` | `↑` / `↓` |
+| Light / Heavy | `F` / `G` | `J` / `K` |
+| Gun / Spell | `H` / `R` | `L` / `U` |
+| Guard / Dash | `Shift` / `E` | `/` / `.` |
+| Rematch / Pause / Hitboxes | `Enter` / `P` / `B` | same |
+
+Simulation runs at a fixed **60 Hz** via `@aether-break/combat-core`; the canvas is presentation-only.
+
 ## Scripts
 
 | Command | Purpose |
 |---------|---------|
-| `pnpm dev` | Start `apps/web` Vite dev server |
+| `pnpm dev` | Start playable greybox (`apps/web`) |
 | `pnpm build` | Build all packages/apps |
 | `pnpm test` | Run CombatCore Vitest suite |
 | `pnpm typecheck` | Strict TypeScript across workspaces |
@@ -108,8 +128,8 @@ Move baselines from SRS §7.2 sample (light: startup 6, active 6–8, recovery 1
 |------|--------|
 | Monorepo scaffold | ✅ |
 | CombatCore v0 + tests | ✅ |
-| Web placeholder | ✅ |
-| Renderer / Babylon | ⏳ deferred |
+| Playable 2D greybox client | ✅ canvas local 1v1 |
+| Renderer / Babylon 2.5D | ⏳ deferred |
 | Online / rollback wire-up | ⏳ deferred |
 | Full move set / ultimates | ⏳ deferred |
 
