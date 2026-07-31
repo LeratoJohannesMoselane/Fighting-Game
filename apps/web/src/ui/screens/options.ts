@@ -100,6 +100,22 @@ export const optionsScreen: ScreenFactory = (ctx) => {
         (v) => updateSettings((s) => (s.graphics.hitboxes = v)),
       ),
     );
+    content.appendChild(
+      toggleRow(
+        'LIVING BACKGROUND',
+        'Parallax layers, drifting weather and ambient wildlife',
+        () => getSettings().graphics.animatedBackground,
+        (v) => updateSettings((s) => (s.graphics.animatedBackground = v)),
+      ),
+    );
+    content.appendChild(
+      toggleRow(
+        'ARENA CRITTERS',
+        'Wild creatures wander in and attack both fighters',
+        () => getSettings().gameplay.critters,
+        (v) => updateSettings((s) => (s.gameplay.critters = v)),
+      ),
+    );
     const row = el('div', 'ae-setting-row');
     row.appendChild(el('div', 's-label', 'PARTICLE DENSITY'));
     row.appendChild(

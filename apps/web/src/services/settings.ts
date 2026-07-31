@@ -10,6 +10,13 @@ export interface GraphicsSettings {
   fpsCounter: boolean;
   hitboxes: boolean;
   particles: 'low' | 'high';
+  /** Parallax layers, weather and ambient wildlife in the backdrop. */
+  animatedBackground: boolean;
+}
+
+export interface GameplaySettings {
+  /** Arena critters that hunt both fighters mid-match. */
+  critters: boolean;
 }
 
 export interface AudioSettings {
@@ -26,6 +33,7 @@ export interface AccessibilitySettings {
 
 export interface Settings {
   graphics: GraphicsSettings;
+  gameplay: GameplaySettings;
   audio: AudioSettings;
   accessibility: AccessibilitySettings;
   language: 'en';
@@ -34,10 +42,18 @@ export interface Settings {
   profile: { tag: string };
 }
 
-const STORAGE_KEY = 'aether-break.settings.v2';
+const STORAGE_KEY = 'aether-break.settings.v3';
 
 const DEFAULTS: Settings = {
-  graphics: { shake: true, flashes: true, fpsCounter: true, hitboxes: false, particles: 'high' },
+  graphics: {
+    shake: true,
+    flashes: true,
+    fpsCounter: true,
+    hitboxes: false,
+    particles: 'high',
+    animatedBackground: true,
+  },
+  gameplay: { critters: true },
   audio: { enabled: true, master: 70 },
   accessibility: { reduceFlashes: false, highContrast: false, largeText: false },
   language: 'en',
@@ -55,6 +71,7 @@ function load(): Settings {
     const parsed = JSON.parse(raw) as Partial<Settings>;
     return {
       graphics: { ...DEFAULTS.graphics, ...parsed.graphics },
+      gameplay: { ...DEFAULTS.gameplay, ...parsed.gameplay },
       audio: { ...DEFAULTS.audio, ...parsed.audio },
       accessibility: { ...DEFAULTS.accessibility, ...parsed.accessibility },
       language: 'en',

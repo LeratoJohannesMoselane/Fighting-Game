@@ -115,29 +115,62 @@ export const INPUT_BUFFER_FRAMES = 6;
 /** Arena half-width in fixed-point units (world x ∈ [-9.5, 9.5]). */
 export const ARENA_HALF_WIDTH = 9500;
 
+/**
+ * Round-start distance from centre (fp). Fighters open ~5.6 body widths
+ * apart — roughly one second of walking at the v0.2 speeds, matching the
+ * classic "just outside sweep range" opening of a fighting game round.
+ */
+export const ROUND_START_X = 3400;
+
 /** Ground y in fixed-point (y = 0 is the floor). */
 export const GROUND_Y = 0;
 
-/** Default gravity acceleration per tick (fp units / tick²). */
-export const GRAVITY = 42;
+/*
+ * ------------------------------------------------------------------
+ * Movement tuning (v0.2 "grounded pass")
+ * ------------------------------------------------------------------
+ * Reference frame: a fighter hurtbox is 1.2 wu wide × 1.6 wu tall and the
+ * arena is 19 wu across (~16 body widths). Pre-0.2 the walk speed was
+ * 320 fp/tick = 19.2 wu/s, i.e. a full arena crossing in ~1 second — the
+ * "skating on ice" problem. Real fighting games walk ~2.5–3.5 body widths
+ * per second and cross a stage in 4–5 seconds.
+ *
+ * Targets used below:
+ *   walk    ≈ 4.2 wu/s  (arena crossing ≈ 4.5 s)
+ *   dash    ≈ 2.3 wu over 12 active frames (~2 body widths)
+ *   jump    ≈ 2.6 wu apex, ~44 frames airtime (~1.6 body heights)
+ */
+
+/**
+ * Default gravity acceleration per tick (fp units / tick²).
+ * With JUMP_VELOCITY 240 this gives a 2.6 wu apex over ~44 frames.
+ */
+export const GRAVITY = 11;
 
 /** Default jump initial velocity (fp units / tick). */
-export const JUMP_VELOCITY = 820;
+export const JUMP_VELOCITY = 240;
 
 /** Default walk speed (fp units / tick). Nyra baseline; Bram is slower in content. */
-export const DEFAULT_WALK_SPEED = 310;
+export const DEFAULT_WALK_SPEED = 70;
 
-/** Ground acceleration toward walk speed (fp / tick²). */
-export const WALK_ACCEL = 55;
+/** Ground acceleration toward walk speed (fp / tick²) — ~7 frames to top speed. */
+export const WALK_ACCEL = 10;
 
-/** Ground friction when no input (fp / tick²). */
-export const GROUND_FRICTION = 48;
+/** Ground friction when no input (fp / tick²) — ~6 frames to a full stop. */
+export const GROUND_FRICTION = 12;
 
 /** Air control factor vs walk accel (0–1). */
 export const AIR_CONTROL = 0.45;
 
+/**
+ * Per-tick velocity bleed applied to a grounded fighter during an attack.
+ * Without this a `forwardImpulse` persisted for the whole move (a 500 fp
+ * impulse on a 48-frame super slid the fighter across the entire arena).
+ */
+export const ATTACK_FRICTION = 22;
+
 /** Forward dash speed impulse (fp units / tick) applied for DASH_ACTIVE_FRAMES. */
-export const DASH_SPEED = 820;
+export const DASH_SPEED = 190;
 
 /** Dash duration in frames. */
 export const DASH_ACTIVE_FRAMES = 12;
@@ -164,6 +197,40 @@ export const DEFAULT_HURTBOX = {
 
 /** Minimum centre-to-centre separation on the ground (fp). */
 export const BODY_HALF_WIDTH = 600;
+
+/* ------------------------------------------------------------------ */
+/* Arena critters (opt-in living stage)                                 */
+/* ------------------------------------------------------------------ */
+
+/** Maximum critters alive at once. */
+export const CRITTER_MAX_ACTIVE = 3;
+
+/** Ticks between spawn attempts (~5 s at 60 Hz). */
+export const CRITTER_SPAWN_COOLDOWN = 300;
+
+/** Distance beyond the arena wall where critters enter/exit (fp). */
+export const CRITTER_SPAWN_MARGIN = 1800;
+
+/** Telegraph frames before a critter's strike connects (the tell / punish window). */
+export const CRITTER_ATTACK_WINDUP = 22;
+
+/** Hitstop applied when a critter connects. */
+export const CRITTER_HITSTOP = 4;
+
+/** Invulnerability frames a critter gets after being hit (one hit per swing). */
+export const CRITTER_INVULN_TICKS = 14;
+
+/** Ticks a spooked critter runs before it is gone. */
+export const CRITTER_FLEE_TICKS = 90;
+
+/** A critter gives up and leaves after this long on stage (~25 s). */
+export const CRITTER_DESPAWN_TICKS = 1500;
+
+/**
+ * Percentage of a move's fighter damage that carries over to critters.
+ * Below 100 so wildlife is a real (if brief) obstacle rather than a free hit.
+ */
+export const CRITTER_CONTACT_DAMAGE_MULT = 70;
 
 /** Park–Miller LCG modulus (2^31 − 1). */
 export const LCG_MOD = 2147483647;

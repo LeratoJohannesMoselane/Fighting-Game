@@ -230,6 +230,59 @@ export class ProceduralAssetSystem {
         this.audio.play('whiff', { intensity: 0.4 });
       } else if (e.type === 'resource_denied') {
         this.audio.play('deny');
+      } else if (e.type === 'critter_hit') {
+        // Wildlife bit a fighter — red spray at the victim.
+        const f = state.fighters[e.slot];
+        this.pending.push({
+          mode: 'world',
+          req: {
+            kind: e.blocked ? 'block' : 'hit_heavy',
+            x: fromFp(f.x),
+            y: fromFp(f.y + 800),
+            color: e.blocked ? '#93c5fd' : '#ff4444',
+            secondary: '#ff8800',
+            scale: 0.9,
+          },
+        });
+        this.audio.play(e.blocked ? 'block' : 'heavy', { intensity: 0.7 });
+      } else if (e.type === 'critter_damaged') {
+        const critter = (state.critters ?? []).find((c) => c.id === e.critterId);
+        if (critter) {
+          this.pending.push({
+            mode: 'world',
+            req: {
+              kind: 'hit_light',
+              x: fromFp(critter.x),
+              y: fromFp(critter.y + 400),
+              color: '#ffd166',
+              scale: 0.8,
+            },
+          });
+        }
+      } else if (e.type === 'critter_defeated') {
+        // Death burst + bounty sparkle at the critter's last position.
+        this.pending.push({
+          mode: 'world',
+          req: {
+            kind: 'hit_ult',
+            x: fromFp(e.x),
+            y: fromFp(e.y + 400),
+            color: '#ff8800',
+            secondary: '#ffd166',
+            scale: 1.1,
+          },
+        });
+        this.pending.push({
+          mode: 'world',
+          req: {
+            kind: 'ember',
+            x: fromFp(e.x),
+            y: fromFp(e.y + 300),
+            color: '#ffb648',
+            secondary: '#fff1a8',
+          },
+        });
+        this.audio.play('ready', { intensity: 0.8 });
       }
     }
   }

@@ -12,11 +12,22 @@ import {
   type ProjectileState,
 } from '@aether-break/combat-core';
 import { proceduralAssets } from './procedural';
+import { ArenaCamera, type CameraView } from './scenes/Camera';
+import { AnimatedBackground, type WeatherKind } from './scenes/background/AnimatedBackground';
+import { drawCritter } from './scenes/animals/CritterRenderer';
 
 const W = 1280;
 const H = 720;
 const GROUND_SCREEN_Y = 560;
-const PX_PER_WU = 58;
+
+/**
+ * Pixels per world unit at zoom 1.
+ *
+ * A fighter hurtbox is 1.6 wu tall, so 118 px/wu puts a body at ~189 px —
+ * about 1/3.8 of the 720 px stage, matching the SF-style framing the design
+ * calls for (previously 58 px/wu drew ~93 px dolls lost on the stage).
+ */
+const PX_PER_WU = 118;
 const ORIGIN_X = W / 2;
 
 export interface RenderOptions {
@@ -25,6 +36,8 @@ export interface RenderOptions {
   p1Color?: string;
   p2Color?: string;
   presentTick?: number;
+  /** Frame delta in 60 Hz units (1 = one frame) for camera + background. */
+  dt?: number;
 }
 
 const DEFAULT_P1 = '#2ee6c5';
@@ -34,6 +47,15 @@ export class ArenaRenderer {
   readonly canvas: HTMLCanvasElement;
   private readonly ctx: CanvasRenderingContext2D;
   private presentTick = 0;
+
+  /** Dynamic framing camera. */
+  private readonly camera = new ArenaCamera(W, H);
+  /** Living backdrop (parallax + weather + wildlife). */
+  private readonly background = new AnimatedBackground(W, H, GROUND_SCREEN_Y);
+  /** Latest camera view; world↔screen helpers read this. */
+  private view: CameraView = { x: 0, y: 0, zoom: 1 };
+  /** Set false to skip the animated backdrop entirely (low graphics). */
+  private richBackground = true;
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -47,6 +69,23 @@ export class ArenaRenderer {
   resetMatch(): void {
     proceduralAssets.reset();
     this.presentTick = 0;
+    this.camera.reset();
+  }
+
+  /** Graphics settings hook: particle density + motion reduction. */
+  applyGraphics(opts: { density: number; reduceMotion: boolean; richBackground: boolean }): void {
+    this.background.setDensity(opts.density);
+    this.background.setReduceMotion(opts.reduceMotion);
+    this.richBackground = opts.richBackground;
+  }
+
+  /** Choose the stage weather (varies per match seed). */
+  setWeather(w: WeatherKind): void {
+    this.background.setWeather(w);
+  }
+
+  randomizeWeather(seed: number): void {
+    this.background.randomizeWeather(seed);
   }
 
   unlockAudio(): void {
@@ -60,7 +99,7 @@ export class ArenaRenderer {
 
   /** Legacy helper used by main for extra juice — routes into procedural VFX. */
   pulseHit(worldX: number, worldY: number, color: string, blocked: boolean): void {
-    const p = this.worldToScreen(worldX, worldY);
+    const p = this.worldToBase(worldX, worldY);
     proceduralAssets.vfx.spawn({
       kind: blocked ? 'block' : 'hit_heavy',
       x: p.x,
@@ -72,26 +111,55 @@ export class ArenaRenderer {
   draw(state: GameState, opts: RenderOptions): void {
     const ctx = this.ctx;
     this.presentTick += 1;
+    const dt = opts.dt ?? 1;
 
-    const shakeX = opts.shake > 0 ? (Math.random() - 0.5) * opts.shake * 6 : 0;
-    const shakeY = opts.shake > 0 ? (Math.random() - 0.5) * opts.shake * 4 : 0;
+    // --- camera: frame both fighters ---
+    const a = this.worldToBase(fromFp(state.fighters[0].x), fromFp(state.fighters[0].y));
+    const b = this.worldToBase(fromFp(state.fighters[1].x), fromFp(state.fighters[1].y));
+    const wall = fromFp(ARENA_HALF_WIDTH);
+    this.view = this.camera.update(a.x, a.y, b.x, b.y, dt, {
+      left: this.worldToBase(-wall, 0).x - 120,
+      right: this.worldToBase(wall, 0).x + 120,
+    });
 
+    const shakeX = opts.shake > 0 ? (Math.random() - 0.5) * opts.shake * 8 : 0;
+    const shakeY = opts.shake > 0 ? (Math.random() - 0.5) * opts.shake * 5 : 0;
+
+    // --- background: screen space, parallaxed against the camera ---
     ctx.save();
-    ctx.setTransform(1, 0, 0, 1, shakeX, shakeY);
+    ctx.setTransform(1, 0, 0, 1, shakeX * 0.4, shakeY * 0.4);
+    if (this.richBackground) {
+      this.background.update(dt);
+      this.background.draw(ctx, {
+        x: this.view.x - ORIGIN_X,
+        y: this.view.y - GROUND_SCREEN_Y,
+        zoom: this.view.zoom,
+      });
+    } else {
+      this.drawBackground(state);
+    }
+    ctx.restore();
 
-    this.drawBackground(state);
+    // --- world: camera transform ---
+    const t = this.camera.transform(this.view);
+    ctx.save();
+    ctx.setTransform(t.a, t.b, t.c, t.d, t.e + shakeX, t.f + shakeY);
+
     this.drawArenaFloor();
 
-    // Projectiles (simple procedural orbs — trails come from asset system)
     const p1c = opts.p1Color ?? DEFAULT_P1;
     const p2c = opts.p2Color ?? DEFAULT_P2;
+
+    // Critters render behind the fighters so the duel always reads first.
+    this.drawCritters(state);
+
     for (const p of state.projectiles) {
       this.drawProjectile(p, p.ownerSlot === 0 ? p1c : p2c);
     }
 
     proceduralAssets.draw(state, {
       ctx,
-      worldToScreen: (x, y) => this.worldToScreen(x, y),
+      worldToScreen: (x, y) => this.worldToBase(x, y),
       showHitboxes: opts.showHitboxes,
       p1Color: p1c,
       p2Color: p2c,
@@ -100,6 +168,19 @@ export class ArenaRenderer {
 
     ctx.restore();
     this.drawPhaseOverlay(state);
+  }
+
+  /** Draw every live critter in world space. */
+  private drawCritters(state: GameState): void {
+    if (!state.critters || state.critters.length === 0) return;
+    for (const c of state.critters) {
+      if (c.hp <= 0 || c.state === 'dead') continue;
+      const p = this.worldToBase(fromFp(c.x), fromFp(c.y));
+      drawCritter(this.ctx, c, p, {
+        pxPerWu: PX_PER_WU,
+        presentTick: this.presentTick,
+      });
+    }
   }
 
   private drawBackground(state: GameState): void {
@@ -167,14 +248,17 @@ export class ArenaRenderer {
 
   private drawArenaFloor(): void {
     const ctx = this.ctx;
-    const left = this.worldToScreen(-fromFp(ARENA_HALF_WIDTH), 0).x;
-    const right = this.worldToScreen(fromFp(ARENA_HALF_WIDTH), 0).x;
+    const left = this.worldToBase(-fromFp(ARENA_HALF_WIDTH), 0).x;
+    const right = this.worldToBase(fromFp(ARENA_HALF_WIDTH), 0).x;
+    // Overdraw: the camera can zoom out past the canvas edges, so the floor
+    // has to be wider/taller than the viewport or gaps appear at the sides.
+    const pad = W;
 
-    const floorG = ctx.createLinearGradient(0, GROUND_SCREEN_Y - 10, 0, H);
+    const floorG = ctx.createLinearGradient(0, GROUND_SCREEN_Y - 10, 0, H + pad);
     floorG.addColorStop(0, '#1e293b');
     floorG.addColorStop(1, '#0f172a');
     ctx.fillStyle = floorG;
-    ctx.fillRect(0, GROUND_SCREEN_Y, W, H - GROUND_SCREEN_Y);
+    ctx.fillRect(-pad, GROUND_SCREEN_Y, W + pad * 2, H - GROUND_SCREEN_Y + pad);
 
     ctx.fillStyle = 'rgba(46, 230, 197, 0.15)';
     ctx.fillRect(left, GROUND_SCREEN_Y, right - left, 8);
@@ -185,22 +269,40 @@ export class ArenaRenderer {
     ctx.lineTo(right, GROUND_SCREEN_Y + 4);
     ctx.stroke();
 
+    // Arena walls
     ctx.fillStyle = 'rgba(251, 191, 36, 0.35)';
-    ctx.fillRect(left - 6, GROUND_SCREEN_Y - 80, 6, 80);
-    ctx.fillRect(right, GROUND_SCREEN_Y - 80, 6, 80);
+    ctx.fillRect(left - 8, GROUND_SCREEN_Y - 150, 8, 150);
+    ctx.fillRect(right, GROUND_SCREEN_Y - 150, 8, 150);
 
+    // Centre mark
     ctx.setLineDash([8, 10]);
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.35)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
     ctx.beginPath();
-    ctx.moveTo(ORIGIN_X, GROUND_SCREEN_Y - 120);
+    ctx.moveTo(ORIGIN_X, GROUND_SCREEN_Y - 150);
     ctx.lineTo(ORIGIN_X, GROUND_SCREEN_Y);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // Floor grid for depth/parallax read
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.09)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = -12; i <= 12; i++) {
+      const gx = this.worldToBase(i, 0).x;
+      ctx.moveTo(gx, GROUND_SCREEN_Y);
+      ctx.lineTo(ORIGIN_X + (gx - ORIGIN_X) * 2.4, H + 300);
+    }
+    for (let r = 1; r <= 7; r++) {
+      const gy = GROUND_SCREEN_Y + r * r * 5;
+      ctx.moveTo(-pad, gy);
+      ctx.lineTo(W + pad, gy);
+    }
+    ctx.stroke();
   }
 
   private drawProjectile(p: ProjectileState, color: string): void {
     const ctx = this.ctx;
-    const c = this.worldToScreen(fromFp(p.x), fromFp(p.y));
+    const c = this.worldToBase(fromFp(p.x), fromFp(p.y));
     const kind = p.kind ?? 'bullet';
     const age = p.age ?? 0;
     const ang = Math.atan2(-p.vy, p.vx * p.facing);
@@ -326,6 +428,14 @@ export class ArenaRenderer {
 
   private drawPhaseOverlay(state: GameState): void {
     const ctx = this.ctx;
+    // Overlays are HUD-space: reset any camera transform still in effect.
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    this.paintPhaseOverlay(state, ctx);
+    ctx.restore();
+  }
+
+  private paintPhaseOverlay(state: GameState, ctx: CanvasRenderingContext2D): void {
     if (state.matchPhase === 'round_intro') {
       const t = state.phaseTimer;
       const label = t > 40 ? 'ROUND ' + state.round : t > 10 ? 'FIGHT' : '';
@@ -369,10 +479,27 @@ export class ArenaRenderer {
     }
   }
 
-  worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
+  /**
+   * World units → base canvas space (before the camera transform).
+   * Everything drawn inside the camera transform uses this.
+   */
+  worldToBase(worldX: number, worldY: number): { x: number; y: number } {
     return {
       x: ORIGIN_X + worldX * PX_PER_WU,
       y: GROUND_SCREEN_Y - worldY * PX_PER_WU,
+    };
+  }
+
+  /**
+   * World units → final screen pixels, camera included.
+   * Use for DOM overlays that must line up with the canvas.
+   */
+  worldToScreen(worldX: number, worldY: number): { x: number; y: number } {
+    const b = this.worldToBase(worldX, worldY);
+    const z = this.view.zoom;
+    return {
+      x: W / 2 + (b.x - this.view.x) * z,
+      y: H / 2 + (b.y - this.view.y) * z,
     };
   }
 }

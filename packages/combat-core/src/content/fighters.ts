@@ -31,7 +31,7 @@ function lightMove(id: string, cancelTo: string[] = []): MoveData {
       staminaGain: 10,
       magicGain: 8,
       defenderUltGain: 3,
-      knockbackX: 120,
+      knockbackX: 45,
       knockbackY: 0,
     },
     onBlock: { blockStun: 9, advantage: -2 },
@@ -55,8 +55,8 @@ function heavyMove(id: string, cancelTo: string[] = []): MoveData {
       staminaGain: 16,
       magicGain: 12,
       defenderUltGain: 5,
-      knockbackX: 280,
-      knockbackY: 200,
+      knockbackX: 105,
+      knockbackY: 100,
     },
     onBlock: { blockStun: 12, advantage: -6, chip: 2 },
     cancelTo,
@@ -97,7 +97,7 @@ function gunMove(
     projectile: {
       frame: opts.startup,
       speedX: opts.speedX,
-      speedY: opts.speedY ?? (kind === 'bomb' ? 220 : 0),
+      speedY: opts.speedY ?? (kind === 'bomb' ? 110 : 0),
       lifetime: opts.lifetime,
       damage: opts.damage,
       hitStun: kind === 'snake' ? 14 : 10,
@@ -107,7 +107,7 @@ function gunMove(
       height: opts.height ?? (kind === 'bomb' ? 280 : kind === 'snake' ? 160 : 120),
       maxActive: kind === 'snake' ? 1 : 2,
       kind,
-      gravity: opts.gravity ?? (kind === 'bomb' ? 28 : 0),
+      gravity: opts.gravity ?? (kind === 'bomb' ? 8 : 0),
       bounce: opts.bounce ?? (kind === 'bomb' ? 0.4 : 0),
     },
   };
@@ -148,8 +148,8 @@ function spellMove(
       fluxGain: 6,
       staminaGain: 2,
       magicGain: 0,
-      knockbackX: 160,
-      knockbackY: 100,
+      knockbackX: 60,
+      knockbackY: 50,
     },
     onBlock: { blockStun: 10, advantage: -8, chip: 3 },
     cancelTo: [],
@@ -207,7 +207,7 @@ function ultimateMove(
     },
     onBlock: { blockStun: 16, advantage: -12, chip: 8 },
     cancelTo: [],
-    forwardImpulse: 200,
+    forwardImpulse: 75,
   };
 }
 
@@ -218,9 +218,9 @@ export const NYRA_VEX: FighterKit = {
   version: '0.1.0',
   base: {
     hp: 1000,
-    walk: 320,
+    walk: 70,
     jumpVelocity: JUMP_VELOCITY,
-    dashSpeed: 820,
+    dashSpeed: 190,
     weight: 1000,
   },
   moves: [
@@ -229,7 +229,7 @@ export const NYRA_VEX: FighterKit = {
     // Twin arc pistols — fast bullets
     gunMove('nyra_gun', {
       damage: 28,
-      speedX: 980,
+      speedX: 340,
       startup: 9,
       recovery: 13,
       lifetime: 42,
@@ -239,13 +239,13 @@ export const NYRA_VEX: FighterKit = {
     {
       ...gunMove('nyra_bomb', {
         damage: 48,
-        speedX: 420,
-        speedY: 380,
+        speedX: 150,
+        speedY: 190,
         startup: 14,
         recovery: 18,
         lifetime: 70,
         kind: 'bomb',
-        gravity: 26,
+        gravity: 7,
         bounce: 0.5,
       }),
       input: 'ABILITY2',
@@ -265,8 +265,8 @@ export const NYRA_VEX: FighterKit = {
       active: [8, 16],
       recovery: 28,
       hitbox: { x: 100, y: 0, w: 1600, h: 1700 },
-      knockbackX: 420,
-      knockbackY: 320,
+      knockbackX: 155,
+      knockbackY: 160,
     }),
   ],
 };
@@ -278,9 +278,9 @@ export const BRAM_KADE: FighterKit = {
   version: '0.1.0',
   base: {
     hp: 1000,
-    walk: 250,
-    jumpVelocity: JUMP_VELOCITY - 40,
-    dashSpeed: 700,
+    walk: 55,
+    jumpVelocity: JUMP_VELOCITY - 15,
+    dashSpeed: 155,
     weight: 1200,
   },
   moves: [
@@ -289,7 +289,7 @@ export const BRAM_KADE: FighterKit = {
     // Scattergun blast pellet
     gunMove('bram_gun', {
       damage: 35,
-      speedX: 760,
+      speedX: 265,
       startup: 11,
       recovery: 15,
       lifetime: 34,
@@ -299,13 +299,13 @@ export const BRAM_KADE: FighterKit = {
     {
       ...gunMove('bram_bomb', {
         damage: 58,
-        speedX: 360,
-        speedY: 420,
+        speedX: 125,
+        speedY: 210,
         startup: 16,
         recovery: 20,
         lifetime: 75,
         kind: 'bomb',
-        gravity: 30,
+        gravity: 8,
         bounce: 0.35,
       }),
       input: 'ABILITY2',
@@ -318,7 +318,7 @@ export const BRAM_KADE: FighterKit = {
         recovery: 20,
         hitbox: { x: 200, y: 200, w: 900, h: 800 },
       }),
-      forwardImpulse: 400,
+      forwardImpulse: 150,
     },
     // Last Foundry — overclock gauntlet slam super.
     {
@@ -329,10 +329,10 @@ export const BRAM_KADE: FighterKit = {
         active: [10, 18],
         recovery: 30,
         hitbox: { x: 50, y: 0, w: 1400, h: 1600 },
-        knockbackX: 380,
-        knockbackY: 200,
+        knockbackX: 140,
+        knockbackY: 100,
       }),
-      forwardImpulse: 500,
+      forwardImpulse: 190,
     },
   ],
 };
@@ -348,9 +348,9 @@ export const IRIA_SOL: FighterKit = {
   version: '1.0.0',
   base: {
     hp: 920,
-    walk: 280,
-    jumpVelocity: 760,
-    dashSpeed: 720,
+    walk: 62,
+    jumpVelocity: 222,
+    dashSpeed: 165,
     weight: 900,
   },
   moves: [
@@ -369,7 +369,7 @@ export const IRIA_SOL: FighterKit = {
         staminaGain: 10,
         magicGain: 8,
         defenderUltGain: 3,
-        knockbackX: 100,
+        knockbackX: 38,
         knockbackY: 0,
       },
       onBlock: { blockStun: 9, advantage: -2 },
@@ -390,8 +390,8 @@ export const IRIA_SOL: FighterKit = {
         staminaGain: 12,
         magicGain: 10,
         defenderUltGain: 4,
-        knockbackX: 120,
-        knockbackY: 280,
+        knockbackX: 45,
+        knockbackY: 140,
       },
       onBlock: { blockStun: 11, advantage: -4 },
       cancelTo: ['iria_spell', 'iria_bolt', 'iria_sevenfold'],
@@ -411,8 +411,8 @@ export const IRIA_SOL: FighterKit = {
         staminaGain: 16,
         magicGain: 12,
         defenderUltGain: 5,
-        knockbackX: 320,
-        knockbackY: 80,
+        knockbackX: 120,
+        knockbackY: 40,
       },
       onBlock: { blockStun: 14, advantage: -8, chip: 3 },
       cancelTo: ['iria_sevenfold'],
@@ -420,7 +420,7 @@ export const IRIA_SOL: FighterKit = {
     // Prism bolt
     gunMove('iria_bolt', {
       damage: 30,
-      speedX: 820,
+      speedX: 285,
       startup: 11,
       recovery: 15,
       lifetime: 46,
@@ -430,7 +430,7 @@ export const IRIA_SOL: FighterKit = {
     {
       ...gunMove('iria_snake', {
         damage: 40,
-        speedX: 480,
+        speedX: 170,
         startup: 14,
         recovery: 18,
         lifetime: 90,
@@ -453,8 +453,8 @@ export const IRIA_SOL: FighterKit = {
       active: [8, 14],
       recovery: 26,
       hitbox: { x: 0, y: 100, w: 1700, h: 1700 },
-      knockbackX: 300,
-      knockbackY: 400,
+      knockbackX: 112,
+      knockbackY: 200,
     }),
   ],
 };
@@ -466,9 +466,9 @@ export const KELLAN_WISP: FighterKit = {
   version: '1.0.0',
   base: {
     hp: 960,
-    walk: 340,
-    jumpVelocity: JUMP_VELOCITY + 20,
-    dashSpeed: 900,
+    walk: 74,
+    jumpVelocity: JUMP_VELOCITY + 8,
+    dashSpeed: 210,
     weight: 920,
   },
   moves: [
@@ -476,7 +476,7 @@ export const KELLAN_WISP: FighterKit = {
     heavyMove('kellan_heavy', ['kellan_tempest']),
     gunMove('kellan_carbine', {
       damage: 26,
-      speedX: 1000,
+      speedX: 350,
       startup: 8,
       recovery: 12,
       lifetime: 40,
@@ -485,7 +485,7 @@ export const KELLAN_WISP: FighterKit = {
     {
       ...gunMove('kellan_tether', {
         damage: 36,
-        speedX: 620,
+        speedX: 215,
         startup: 12,
         recovery: 16,
         lifetime: 50,
@@ -507,8 +507,8 @@ export const KELLAN_WISP: FighterKit = {
       active: [7, 15],
       recovery: 24,
       hitbox: { x: 50, y: 0, w: 1500, h: 1600 },
-      knockbackX: 360,
-      knockbackY: 280,
+      knockbackX: 135,
+      knockbackY: 140,
     }),
   ],
 };

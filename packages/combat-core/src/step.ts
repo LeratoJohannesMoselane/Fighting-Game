@@ -1,5 +1,6 @@
 import {
   AIR_CONTROL,
+  ATTACK_FRICTION,
   BODY_HALF_WIDTH,
   DASH_ACTIVE_FRAMES,
   DASH_RECOVERY_FRAMES,
@@ -19,6 +20,11 @@ import {
   WALK_ACCEL,
 } from './constants.js';
 import { findMoveByInput, getKit, getMove } from './content/fighters.js';
+import {
+  resolveFighterHitsOnCritters,
+  resolveProjectileHitsOnCritters,
+  tickCritters,
+} from './critters.js';
 import { bufferHas, consumeBufferAction, normalizeActions, pushBuffer } from './input.js';
 import { aabbOverlap, clamp, localBoxToWorld } from './math.js';
 import {
@@ -65,6 +71,7 @@ export function step(state: GameState, inputs: StepInputs): GameState {
   switch (s.matchPhase) {
     case 'round_intro':
       ingestInputs(s, inputs);
+      tickCritters(s);
       s.phaseTimer -= 1;
       if (s.phaseTimer <= 0) {
         pushPhase(s, 'fighting');
@@ -73,6 +80,7 @@ export function step(state: GameState, inputs: StepInputs): GameState {
 
     case 'round_end':
       ingestInputs(s, inputs);
+      tickCritters(s);
       s.phaseTimer -= 1;
       if (s.phaseTimer <= 0) {
         advanceAfterRoundEnd(s);
@@ -120,8 +128,11 @@ export function step(state: GameState, inputs: StepInputs): GameState {
     separateFighters(s);
     updateProjectiles(s);
     resolveMeleeHits(s);
+    resolveFighterHitsOnCritters(s);
+    resolveProjectileHitsOnCritters(s);
     resolveProjectileHits(s);
     updateFacingSafe(s);
+    tickCritters(s);
   }
 
   // Timer always decrements (match clock is not cosmetic).
@@ -177,6 +188,11 @@ function tickFighter(s: GameState, f: FighterState, input: ActionBits, inHitstop
   // Stun / knockdown lockout
   if (f.phase === 'hitstun' || f.phase === 'blockstun') {
     f.stunFrames -= 1;
+    // Knockback bleeds off on the ground so hits push you back a step
+    // instead of launching a frictionless slide.
+    if (f.y <= GROUND_Y && f.vx !== 0) {
+      f.vx = approach(f.vx, 0, GROUND_FRICTION);
+    }
     applyPhysics(f);
     if (f.stunFrames <= 0) {
       f.phase = f.y > GROUND_Y ? 'airborne' : 'neutral';
@@ -198,6 +214,11 @@ function tickFighter(s: GameState, f: FighterState, input: ActionBits, inHitstop
   // Attack state machine
   if (f.phase === 'attack' && f.move) {
     advanceAttack(s, f);
+    // Lunges (forwardImpulse) decay instead of gliding for the whole move —
+    // otherwise a 48-frame super carries the fighter across the arena.
+    if (f.y <= GROUND_Y && f.vx !== 0) {
+      f.vx = approach(f.vx, 0, ATTACK_FRICTION);
+    }
     applyPhysics(f);
     return;
   }
@@ -622,7 +643,7 @@ function spawnProjectile(s: GameState, f: FighterState, move: MoveData): void {
     lifetime: def.lifetime,
     facing: f.facing,
     kind,
-    gravity: def.gravity ?? (kind === 'bomb' ? 28 : kind === 'snake' ? 0 : 0),
+    gravity: def.gravity ?? (kind === 'bomb' ? 8 : 0),
     bounce: def.bounce ?? (kind === 'bomb' ? 0.45 : 0),
     age: 0,
   };
@@ -659,7 +680,7 @@ function updateProjectiles(s: GameState): void {
         if (p.bounce > 0 && p.vy < 0) {
           p.vy = (-p.vy * p.bounce) | 0;
           p.vx = ((p.vx * 85) / 100) | 0;
-          if (Math.abs(p.vy) < 40) p.vy = 0;
+          if (Math.abs(p.vy) < 15) p.vy = 0;
         } else if (p.kind === 'bomb') {
           // Fuse expire soon after settling
           p.lifetime = Math.min(p.lifetime, 8);

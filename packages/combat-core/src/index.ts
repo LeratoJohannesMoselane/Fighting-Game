@@ -41,6 +41,7 @@ export {
   FP_SCALE,
   INPUT_BUFFER_FRAMES,
   ARENA_HALF_WIDTH,
+  ROUND_START_X,
   GROUND_Y,
   GRAVITY,
   JUMP_VELOCITY,
@@ -48,6 +49,7 @@ export {
   WALK_ACCEL,
   GROUND_FRICTION,
   AIR_CONTROL,
+  ATTACK_FRICTION,
   DASH_SPEED,
   DASH_ACTIVE_FRAMES,
   DASH_RECOVERY_FRAMES,
@@ -58,6 +60,13 @@ export {
   BODY_HALF_WIDTH,
   LCG_MOD,
   LCG_MUL,
+  CRITTER_MAX_ACTIVE,
+  CRITTER_SPAWN_COOLDOWN,
+  CRITTER_SPAWN_MARGIN,
+  CRITTER_ATTACK_WINDUP,
+  CRITTER_FLEE_TICKS,
+  CRITTER_DESPAWN_TICKS,
+  CRITTER_CONTACT_DAMAGE_MULT,
 } from './constants.js';
 
 export {
@@ -96,9 +105,17 @@ export type {
   GameEvent,
   GameState,
   CreateInitialStateOptions,
+  CritterState,
+  CritterPhase,
 } from './types.js';
 
 export { createInitialState } from './state.js';
+export {
+  CRITTER_ARCHETYPES,
+  CRITTER_TOTAL_WEIGHT,
+  getCritterArchetype,
+} from './content/critters.js';
+export type { CritterArchetype, CritterBehavior } from './content/critters.js';
 export { step, stepN } from './step.js';
 export {
   serializeState,

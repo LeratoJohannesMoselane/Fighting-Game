@@ -68,6 +68,12 @@ function applySettings(s: Settings, toRuntime: boolean): void {
   proceduralAssets.audio.setMasterVolume(s.audio.master / 100);
   // particles
   proceduralAssets.vfx.setDensity(s.graphics.particles === 'high' ? 1 : 0.45);
+  // living background (parallax / weather / wildlife density)
+  renderer.applyGraphics({
+    density: s.graphics.particles === 'high' ? 1 : 0.4,
+    reduceMotion: s.accessibility.reduceFlashes,
+    richBackground: s.graphics.animatedBackground,
+  });
   // body classes
   document.body.classList.toggle('ae-contrast', s.accessibility.highContrast);
   document.body.classList.toggle('ae-large', s.accessibility.largeText);
@@ -131,12 +137,18 @@ function applyRosterLabels(cfg: MatchConfig): void {
 function startMatch(cfg: MatchConfig): void {
   matchConfig = cfg;
   const seed = freshSeed();
+  const s0 = getSettings();
+  // Wildlife is off in training so the lab stays clean.
+  const wantCritters = s0.gameplay.critters && cfg.mode !== 'training';
   state = createInitialState({
     seed,
     mode: 'versus',
     p1Id: cfg.p1Id,
     p2Id: cfg.p2Id,
+    critters: wantCritters,
   });
+  // Stage mood varies per match so a long set never looks the same twice.
+  renderer.randomizeWeather(seed);
   getKit(cfg.p1Id);
   getKit(cfg.p2Id);
 
@@ -144,9 +156,8 @@ function startMatch(cfg: MatchConfig): void {
     cfg.opponentMode === 'cpu' ? new CpuController(1, cfg.cpuDifficulty, seed ^ 0x5f3759df) : null;
 
   // Presentation: colorways + settings-driven defaults
-  const s = getSettings();
-  proceduralAssets.setColorways(s.colorways.p1, s.colorways.p2);
-  input.showHitboxes = s.graphics.hitboxes;
+  proceduralAssets.setColorways(s0.colorways.p1, s0.colorways.p2);
+  input.showHitboxes = s0.graphics.hitboxes;
 
   // Drain stale menu/rematch requests queued while menus were open
   input.consumeMenu();
@@ -214,6 +225,11 @@ function handleEvents(events: GameEvent[], s: GameState): void {
       shake = Math.min(1, shake + 0.4);
     } else if (e.type === 'guard_crush') {
       shake = Math.min(1, shake + 0.55);
+    } else if (e.type === 'critter_hit') {
+      shake = Math.min(1, shake + (e.blocked ? 0.15 : 0.45));
+      if (flashesOn && !e.blocked) hud.flashHit();
+    } else if (e.type === 'critter_defeated') {
+      shake = Math.min(1, shake + 0.35);
     } else if (e.type === 'death' || e.type === 'round_end') {
       shake = 1;
     }
@@ -335,6 +351,8 @@ function frame(ts: number): void {
       shake: effectiveShake,
       p1Color,
       p2Color,
+      // Camera/background smoothing works in 60 Hz frame units.
+      dt: Math.min(4, dt / TICK_MS),
     });
   } catch (err) {
     reportRenderError(err);

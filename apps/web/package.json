@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@aether-break/combat-core": "workspace:*"
@@ -19,6 +20,7 @@
     "eslint": "9.17.0",
     "typescript": "5.5.4",
     "typescript-eslint": "8.18.1",
-    "vite": "5.4.11"
+    "vite": "5.4.11",
+    "vitest": "2.1.8"
   }
 }

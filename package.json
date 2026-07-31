@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "pnpm --filter @aether-break/web dev",
     "build": "pnpm -r run build",
-    "test": "pnpm --filter @aether-break/combat-core test",
+    "test": "pnpm -r --if-present run test",
     "typecheck": "pnpm -r run typecheck",
     "lint": "pnpm -r run lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,yml,yaml,html,css}\"",

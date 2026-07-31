@@ -60,6 +60,113 @@ describe('movement', () => {
   });
 });
 
+/**
+ * Pacing guardrails (v0.2 tuning). These are deliberately expressed as
+ * human-readable rates rather than raw constants so a future re-tune has to
+ * consciously agree that the game still feels like a fighting game.
+ */
+describe('movement pacing', () => {
+  const WU = (fp: number) => fp / 1000;
+
+  it('walks 3–6 world units per second (not skating)', () => {
+    let s = fightingState(51);
+    const x0 = s.fighters[0].x;
+    s = hold(s, inputs({ right: true }), 60); // exactly one second
+    const perSecond = WU(s.fighters[0].x - x0);
+    expect(perSecond).toBeGreaterThan(3);
+    expect(perSecond).toBeLessThan(6);
+  });
+
+  it('takes at least 3 seconds to cross the full arena', () => {
+    let s = fightingState(53);
+    s = hold(s, inputs({ right: true }), 600); // pin to the right wall
+    let frames = 0;
+    while (s.fighters[0].x > -ARENA_HALF_WIDTH && frames < 2000) {
+      s = hold(s, inputs({ left: true }), 1);
+      frames += 1;
+    }
+    expect(frames / 60).toBeGreaterThan(3);
+  });
+
+  it('jump apex clears roughly one to two body heights', () => {
+    let s = fightingState(55);
+    s = hold(s, inputs({ jump: true }), 1);
+    let apex = 0;
+    for (let i = 0; i < 120; i++) {
+      s = hold(s, blankInputs(), 1);
+      if (s.fighters[0].y > apex) apex = s.fighters[0].y;
+      if (s.fighters[0].y === GROUND_Y && i > 4) break;
+    }
+    // Hurtbox is 1.6 wu tall.
+    expect(WU(apex)).toBeGreaterThan(1.6);
+    expect(WU(apex)).toBeLessThan(4);
+  });
+
+  it('airtime is a readable arc, not a moon jump', () => {
+    let s = fightingState(57);
+    s = hold(s, inputs({ jump: true }), 1);
+    let air = 0;
+    for (let i = 0; i < 300; i++) {
+      s = hold(s, blankInputs(), 1);
+      if (s.fighters[0].y > GROUND_Y) air += 1;
+      else if (air > 0) break;
+    }
+    expect(air).toBeGreaterThan(24);
+    expect(air).toBeLessThan(70);
+  });
+
+  it('a dash covers roughly two body widths', () => {
+    let s = fightingState(59);
+    const x0 = s.fighters[0].x;
+    s = hold(s, inputs({ dash: true, right: true }), 1);
+    s = hold(s, blankInputs(), 25);
+    const dist = WU(s.fighters[0].x - x0);
+    // Body is 1.2 wu wide.
+    expect(dist).toBeGreaterThan(1.2);
+    expect(dist).toBeLessThan(4);
+  });
+
+  it('a dash outruns a walk over the same window', () => {
+    const walked = (() => {
+      let s = fightingState(61);
+      const x0 = s.fighters[0].x;
+      s = hold(s, inputs({ right: true }), 12);
+      return s.fighters[0].x - x0;
+    })();
+    const dashed = (() => {
+      let s = fightingState(61);
+      const x0 = s.fighters[0].x;
+      s = hold(s, inputs({ dash: true, right: true }), 1);
+      s = hold(s, blankInputs(), 11);
+      return s.fighters[0].x - x0;
+    })();
+    expect(dashed).toBeGreaterThan(walked);
+  });
+
+  it('fighters come to rest instead of sliding on ice', () => {
+    let s = fightingState(63);
+    s = hold(s, inputs({ right: true }), 30);
+    s = hold(s, blankInputs(), 12);
+    expect(s.fighters[0].vx).toBe(0);
+  });
+
+  it('a lunging attack does not glide across the stage', () => {
+    let s = fightingState(65);
+    const x0 = s.fighters[0].x;
+    // Spell carries a forwardImpulse; it should step in, not skate.
+    s = hold(s, inputs({ ability1: true }), 1);
+    s = hold(s, blankInputs(), 60);
+    expect(WU(Math.abs(s.fighters[0].x - x0))).toBeLessThan(2.5);
+  });
+
+  it('the round opens inside a walkable distance', () => {
+    const s = fightingState(67);
+    const gap = WU(s.fighters[1].x - s.fighters[0].x);
+    expect(gap).toBeGreaterThan(3);
+    expect(gap).toBeLessThan(10);
+  });
+});
+
 describe('jump arcs', () => {
   it('leaves the ground and returns', () => {
     let s = fightingState(13);

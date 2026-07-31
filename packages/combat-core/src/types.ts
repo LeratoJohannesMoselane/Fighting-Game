@@ -284,6 +284,42 @@ export interface ProjectileState {
   age: number;
 }
 
+/** Lifecycle state of an arena critter. */
+export type CritterPhase = 'idle' | 'approaching' | 'attacking' | 'fleeing' | 'dead';
+
+/**
+ * A single live critter. Positions are fixed-point like fighters, and every
+ * field is plain data so the state stays JSON-canonicalisable (ADR-0002).
+ */
+export interface CritterState {
+  id: number;
+  archetypeId: string;
+  hp: number;
+  maxHp: number;
+  x: number;
+  y: number;
+  vx: number;
+  facing: 1 | -1;
+  state: CritterPhase;
+  /** Fighter currently hunted, or null while wandering. */
+  targetSlot: 0 | 1 | null;
+  attackCooldown: number;
+  /** Frames left in the strike telegraph (0 = not winding up). */
+  windup: number;
+  fleeTimer: number;
+  /** Frames of hurt flash left (presentation). */
+  hurtFlash: number;
+  /** Ticks alive. */
+  age: number;
+  /** Deterministic per-critter phase offset for idle motion. */
+  seedOffset: number;
+  /**
+   * Invulnerability frames after taking a hit. Stops a single active window
+   * from shredding a critter frame-by-frame, and gives knockback room to read.
+   */
+  invuln: number;
+}
+
 export type GameEvent =
   | { type: 'round_start'; round: number; tick: number }
   | { type: 'attack_started'; slot: 0 | 1; moveId: string; tick: number }
@@ -317,7 +353,34 @@ export type GameEvent =
   | { type: 'guard_crush'; slot: 0 | 1; tick: number }
   | { type: 'round_end'; round: number; winner: 0 | 1 | 'draw'; tick: number }
   | { type: 'match_end'; winner: 0 | 1 | 'draw'; tick: number }
-  | { type: 'phase_change'; from: MatchPhase; to: MatchPhase; tick: number };
+  | { type: 'phase_change'; from: MatchPhase; to: MatchPhase; tick: number }
+  // --- arena critters ---
+  | {
+      type: 'critter_hit';
+      critterId: number;
+      slot: 0 | 1;
+      damage: number;
+      blocked: boolean;
+      tick: number;
+    }
+  | { type: 'critter_whiff'; critterId: number; tick: number }
+  | {
+      type: 'critter_damaged';
+      critterId: number;
+      slot: 0 | 1;
+      amount: number;
+      remainingHp: number;
+      tick: number;
+    }
+  | {
+      type: 'critter_defeated';
+      critterId: number;
+      archetypeId: string;
+      slot: 0 | 1;
+      x: number;
+      y: number;
+      tick: number;
+    };
 
 export interface GameState {
   /** Monotonic simulation tick (increments every step). */
@@ -340,6 +403,14 @@ export interface GameState {
   matchWinner: 0 | 1 | 'draw' | null;
   /** Hitstop remaining applied globally (both fighters frozen). */
   globalHitstop: number;
+  /** Live arena critters (empty unless the match enabled them). */
+  critters: CritterState[];
+  /** Next critter id. */
+  nextCritterId: number;
+  /** Ticks until the next spawn attempt. */
+  critterSpawnTimer: number;
+  /** Master switch — off keeps the simulation byte-identical to a critter-free match. */
+  crittersEnabled: boolean;
 }
 
 export interface CreateInitialStateOptions {
@@ -349,4 +420,6 @@ export interface CreateInitialStateOptions {
   p1Id?: string;
   /** Fighter kit id for slot 1 (default bram_kade). */
   p2Id?: string;
+  /** Spawn arena critters during the match (default false). */
+  critters?: boolean;
 }

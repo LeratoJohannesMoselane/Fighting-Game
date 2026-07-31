@@ -1,6 +1,8 @@
 import {
   ARENA_HALF_WIDTH,
+  CRITTER_SPAWN_COOLDOWN,
   DEFAULT_HURTBOX,
+  ROUND_START_X,
   INPUT_BUFFER_FRAMES,
   MAX_HP,
   ROUND_INTRO_FRAMES,
@@ -77,8 +79,8 @@ export function createInitialState(options: CreateInitialStateOptions): GameStat
   getKit(p1Id);
   getKit(p2Id);
 
-  const p1 = makeFighter(p1Id, 0, -6500);
-  const p2 = makeFighter(p2Id, 1, 6500);
+  const p1 = makeFighter(p1Id, 0, -ROUND_START_X);
+  const p2 = makeFighter(p2Id, 1, ROUND_START_X);
 
   const state: GameState = {
     tick: 0,
@@ -95,6 +97,10 @@ export function createInitialState(options: CreateInitialStateOptions): GameStat
     nextProjectileId: 1,
     matchWinner: null,
     globalHitstop: 0,
+    critters: [],
+    nextCritterId: 1,
+    critterSpawnTimer: CRITTER_SPAWN_COOLDOWN,
+    crittersEnabled: options.critters === true,
   };
 
   updateFacing(state);
@@ -108,11 +114,13 @@ export function resetRoundFighters(state: GameState): void {
   const kit1 = getKit(p1.id);
   const kit2 = getKit(p2.id);
 
-  resetFighterForRound(p1, -6500, kit1.base.hp, 1);
-  resetFighterForRound(p2, 6500, kit2.base.hp, -1);
+  resetFighterForRound(p1, -ROUND_START_X, kit1.base.hp, 1);
+  resetFighterForRound(p2, ROUND_START_X, kit2.base.hp, -1);
   state.projectiles = [];
   state.timer = ROUND_TICKS;
   state.globalHitstop = 0;
+  state.critters = [];
+  state.critterSpawnTimer = CRITTER_SPAWN_COOLDOWN;
 }
 
 function resetFighterForRound(f: FighterState, x: number, hp: number, facing: 1 | -1): void {
