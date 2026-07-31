@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ether Arena</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&amp;display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0a001f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Press Start 2P', system-ui;
+            color: #00ffcc;
+        }
+        canvas {
+            border: 6px solid #00ffcc;
+            border-radius: 8px;
+            box-shadow: 0 0 40px #00ffcc,
+                        inset 0 0 20px rgba(0,255,204,0.3);
+            image-rendering: pixelated;
+        }
+        .container {
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.8rem;
+            margin: 15px 0 5px;
+            text-shadow: 0 0 20px #00ffcc,
+                        4px 4px 0 #330066;
+            letter-spacing: 4px;
+        }
+        .instructions {
+            margin-top: 15px;
+            font-size: 0.75rem;
+            background: #110033;
+            padding: 15px 25px;
+            border: 3px solid #00ffcc;
+            border-radius: 4px;
+            display: inline-block;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ETHER ARENA</h1>
+        <canvas id="game" width="960" height="540"></canvas>
+        <div class="instructions">
+            <strong>PLAYER 1:</strong> A/D = Move • W = Jump • SPACE = Attack • Q = Special<br>
+            <strong>PLAYER 2:</strong> ←/→ = Move • ↑ = Jump • ENTER = Attack • SHIFT = Special<br>
+            <span style="color:#ff00aa">First to 0 HP wins! Press R to restart</span>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
