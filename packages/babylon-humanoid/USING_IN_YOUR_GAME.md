@@ -6,7 +6,77 @@ That's everything working. Here's how to drive actual fighters with it.
 
 ---
 
-## The one-screen version
+## All four fighters, one model file
+
+Every Aether Break character uses `Mannequin_F.glb`. `createRoster()` wraps the
+factory and applies per-character identity for you:
+
+```ts
+import { createRoster, resolveClip } from '@aether-break/babylon-humanoid';
+
+const roster = await createRoster(scene, {
+  modelUrl:   '/animations/Mannequin_F.glb',
+  libraryUrl: '/animations/UAL2_Standard.glb',
+});
+
+const p1 = roster.spawn('nyra_vex', 'p1');   // cyan, slim, throws
+const p2 = roster.spawn('bram_kade', 'p2');  // orange, bulky, punches
+p1.setFacing(1);
+p2.setFacing(-1);
+
+// each frame
+scene.onBeforeRenderObservable.add(() => {
+  for (const [rig, f] of [[p1, state.fighters[0]], [p2, state.fighters[1]]] as const) {
+    rig.root.position.set(f.x / 1000, f.y / 1000, 0);
+    rig.setFacing(f.facing);
+    rig.playKey(resolveClip(f));   // note: playKey, not play
+  }
+});
+```
+
+Mirror matches work — `roster.spawn('nyra_vex')` twice gives two independent
+fighters.
+
+### How they're told apart
+
+One puppet, three levers — measured from a real run:
+
+| | Nyra | Bram | Iria | Kellan |
+| --- | --- | --- | --- | --- |
+| **Tint** | `#00BCD4` cyan | `#E65100` orange | `#E040FB` violet | `#00E5FF` electric |
+| **Build** (x-scale) | 0.92 | 1.30 | 0.86 | 0.98 |
+| **Idle** | `IDLE_NO_LOOP` | `IDLE_FOLDARMS_LOOP` | `IDLE_LANTERN_LOOP` | `IDLE_FOLDARMS_LOOP` |
+| **Light** | `SWORD_REGULAR_A` | `MELEE_HOOK` | `SWORD_REGULAR_A` | `SWORD_REGULAR_A` |
+
+**Motion is what really sells it.** Bram punching (`MELEE_HOOK`) while Nyra
+slashes reads as two different fighters far more than colour does. Tune it:
+
+```ts
+import { AETHER_STYLES } from '@aether-break/babylon-humanoid';
+
+AETHER_STYLES.bram_kade.widthScale = 1.3;
+AETHER_STYLES.iria_sol.clipMap.idle = 'IDLE_TALKINGPHONE_LOOP';
+```
+
+### The trap this avoids
+
+Babylon's `instantiateModelsToScene(name, false)` shares **one material** across
+every instance — tint Nyra and Bram turns cyan too. `createRoster` clones
+materials per fighter. There are three tests pinning this, including one that
+documents the coupled behaviour so a future "optimisation" can't silently
+reintroduce it.
+
+### Cost
+
+One `AssetContainer`, N instances: geometry and textures are shared on the GPU;
+only materials and skeletons are per-fighter. Clips are the union of every
+character's map (20 of the 43), retargeted once at spawn.
+
+---
+
+## The one-screen version (single character)
+
+### Lower-level API
 
 ```ts
 import {

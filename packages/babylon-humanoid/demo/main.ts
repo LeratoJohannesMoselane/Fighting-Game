@@ -22,6 +22,7 @@ import '@babylonjs/core/Rendering/depthRendererSceneComponent';
 import '@babylonjs/loaders/glTF/2.0';
 
 import {
+  createRoster,
   CharacterController,
   createProceduralCharacter,
   loadRiggedCharacter,
@@ -220,7 +221,45 @@ async function boot(): Promise<void> {
   setLog(note + `<b>Loaded ${loaded.length} clip(s).</b> Click a name to play it.`);
 }
 
-void boot();
+/**
+ * Roster line-up: every Aether Break character on the SAME Mannequin_F.glb,
+ * told apart by tint, build and idle clip. Runs after boot() if the model and
+ * library both loaded.
+ */
+async function showRoster(): Promise<void> {
+  if (!MODEL_URL || !LIBRARY_URL) return;
+  try {
+    const roster = await createRoster(scene, {
+      modelUrl: MODEL_URL,
+      libraryUrl: LIBRARY_URL,
+    });
+    // Hide the single demo character; the line-up replaces it.
+    character.dispose();
+    controller.dispose();
+
+    const ids = ['nyra_vex', 'bram_kade', 'iria_sol', 'kellan_wisp'];
+    ids.forEach((id, i) => {
+      const rig = roster.spawn(id);
+      rig.root.position.x = (i - (ids.length - 1) / 2) * 1.5;
+      rig.setFacing(1);
+      rig.playKey('idle');
+    });
+    camera.setTarget(new Vector3(0, 0.95, 0));
+    camera.radius = 7;
+    setLog(
+      `<b>Roster line-up</b> — all four fighters from one ` +
+        `<code>Mannequin_F.glb</code>.<br>` +
+        `Told apart by tint, build and idle clip.`,
+    );
+  } catch (err) {
+    console.error('roster line-up failed', err);
+  }
+}
+
+// Set to true to see the whole roster instead of a single clip browser.
+const SHOW_ROSTER = false;
+
+void (SHOW_ROSTER ? showRoster() : boot());
 
 engine.runRenderLoop(() => scene.render());
 window.addEventListener('resize', () => engine.resize());

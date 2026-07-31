@@ -40,6 +40,15 @@ export {
 export type { LoadedClip, LoadClipOptions } from './animationLibrary';
 
 export { createFighterFactory } from './fighterRig';
+export {
+  createRoster,
+  applyStyle,
+  styleFor,
+  rosterClips,
+  AETHER_STYLES,
+  NEUTRAL_STYLE,
+} from './roster3d';
+export type { CharacterStyle, StyledFighter } from './roster3d';
 export type { FighterRig, FighterFactory, CreateFighterFactoryOptions } from './fighterRig';
 
 export {

@@ -65,6 +65,14 @@ export interface CreateFighterFactoryOptions {
   /** Uniform scale for each spawned fighter. */
   scale?: number;
   /**
+   * Clone materials per fighter (default true).
+   *
+   * Must stay true when fighters are individually tinted: with shared
+   * materials, recolouring one instance recolours every instance.
+   * Set false only if all fighters look identical, to save a few draw calls.
+   */
+  cloneMaterials?: boolean;
+  /**
    * Extra keys that reuse an already-loaded clip, e.g.
    * `[{ alias: 'heavy', target: 'light' }]` when both use MELEE_HOOK.
    * Avoids retargeting the same animation twice.
@@ -127,7 +135,10 @@ export async function createFighterFactory(
   function spawn(name: string): FighterRig {
     const id = `${name}_${spawnCount++}`;
     // Cloning gives this fighter its own skeleton, so it animates alone.
-    const instance = modelContainer.instantiateModelsToScene((n) => `${id}_${n}`, false);
+    const instance = modelContainer.instantiateModelsToScene(
+      (n) => `${id}_${n}`,
+      options.cloneMaterials ?? true,
+    );
     const skeleton = instance.skeletons[0];
     if (!skeleton) throw new Error('Instantiated model has no skeleton.');
 
