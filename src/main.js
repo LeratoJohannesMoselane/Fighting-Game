@@ -1,6 +1,6 @@
 import { 
     Engine, Scene, ArcRotateCamera, HemisphericLight, DirectionalLight,
-    Vector3, Color3, StandardMaterial, MeshBuilder, ShadowGenerator, ParticleSystem
+    Vector3, Color3, StandardMaterial, MeshBuilder, ShadowGenerator
 } from 'babylonjs';
 import "babylonjs-loaders";
 import * as CombatCore from './combat-core.js';
@@ -33,69 +33,26 @@ platform.position.y = 0.65;
 platform.material = new StandardMaterial("platMat", scene);
 platform.material.diffuseColor = new Color3(0.15, 0.07, 0.28);
 
-// === LIVING ANIMATED BACKGROUND ===
+// Living Background
 function createLivingBackground() {
-    // Floating Ether Crystals (animated)
     for (let i = 0; i < 6; i++) {
         const crystal = MeshBuilder.CreateCylinder(`crystal_${i}`, {
             height: 2.8, diameterTop: 0.35, diameterBottom: 0.55, tessellation: 6
         }, scene);
-        
         const mat = new StandardMaterial(`crystalMat_${i}`, scene);
         mat.diffuseColor = new Color3(0, 0.9, 0.7);
         mat.emissiveColor = new Color3(0, 0.6, 0.5);
         crystal.material = mat;
-        
         crystal.position.x = -10 + (i * 4);
         crystal.position.y = 3.5 + Math.sin(i) * 1.5;
         crystal.position.z = -4 + (i % 2) * 1.5;
         
-        // Gentle floating animation
         scene.registerBeforeRender(() => {
             crystal.position.y = 3.5 + Math.sin(Date.now() / 800 + i) * 1.2;
             crystal.rotation.y = Date.now() / 1200 + i;
         });
     }
-
-    // Pulsing Energy Orbs
-    for (let i = 0; i < 4; i++) {
-        const orb = MeshBuilder.CreateSphere(`orb_${i}`, { diameter: 1.1 }, scene);
-        const mat = new StandardMaterial(`orbMat_${i}`, scene);
-        mat.diffuseColor = new Color3(0.3, 0.9, 1);
-        mat.emissiveColor = new Color3(0.2, 0.7, 1);
-        orb.material = mat;
-        
-        orb.position.x = -8 + i * 5.5;
-        orb.position.y = 7.5;
-        orb.position.z = 6;
-        
-        scene.registerBeforeRender(() => {
-            const scale = 0.9 + Math.sin(Date.now() / 600 + i * 2) * 0.25;
-            orb.scaling = new Vector3(scale, scale, scale);
-        });
-    }
-
-    // Background Light Beams (moving)
-    const beamMat = new StandardMaterial("beamMat", scene);
-    beamMat.diffuseColor = new Color3(0.4, 0.6, 1);
-    beamMat.emissiveColor = new Color3(0.2, 0.4, 0.9);
-    beamMat.alpha = 0.25;
-
-    for (let i = 0; i < 3; i++) {
-        const beam = MeshBuilder.CreateCylinder(`beam_${i}`, {
-            height: 18, diameter: 0.8, tessellation: 12
-        }, scene);
-        beam.material = beamMat;
-        beam.position.x = -7 + i * 7;
-        beam.position.y = 9;
-        beam.rotation.z = 0.6;
-
-        scene.registerBeforeRender(() => {
-            beam.rotation.z = 0.6 + Math.sin(Date.now() / 1800 + i) * 0.15;
-        });
-    }
 }
-
 createLivingBackground();
 
 // Fallback fighter
@@ -113,6 +70,8 @@ function createFallbackFighter(name, color) {
 
 let p1Controller, p2Controller;
 let ai = new AIController('normal');
+let gameRunning = false;
+let combatState;
 
 async function createFighters() {
     const p1Model = await CharacterController.loadFromGLTF(scene, "/assets/nyra.glb", "nyra");
@@ -140,10 +99,6 @@ let keys = {};
 window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-let combatState = CombatCore.createInitialState();
-let lastTick = performance.now();
-let gameRunning = true;
-
 const p1Fill = document.getElementById('p1-health-fill');
 const p2Fill = document.getElementById('p2-health-fill');
 const statusEl = document.getElementById('status');
@@ -156,12 +111,7 @@ function getInput(player) {
         gun: keys['l'], magic: keys['u'], ultimate: keys['o'],
         guard: keys['shift']
     };
-    return {
-        left: keys['arrowleft'], right: keys['arrowright'], jump: keys['arrowup'],
-        light: keys['1'], heavy: keys['2'],
-        gun: keys['3'], magic: keys['4'], ultimate: keys['6'],
-        guard: keys['.']
-    };
+    return {};
 }
 
 function updateVisuals() {
@@ -186,11 +136,10 @@ function gameLoop() {
     const now = performance.now();
     while (now - lastTick >= CombatCore.TICK_MS) {
         const p1Input = getInput(1);
-        const p2Input = getInput(2);
-
-        // AI for player 2
+        
+        // AI Input for Player 2
         const aiInput = ai.getInput(combatState, combatState.p2, combatState.p1);
-        Object.assign(p2Input, aiInput);
+        const p2Input = { ...aiInput };
 
         combatState = CombatCore.step(combatState, { p1: p1Input, p2: p2Input });
         lastTick += CombatCore.TICK_MS;
@@ -205,6 +154,15 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+let lastTick = 0;
+
+function startGameLoop() {
+    combatState = CombatCore.createInitialState();
+    lastTick = performance.now();
+    gameRunning = true;
+    gameLoop();
+}
+
 function endGame(winner) {
     gameRunning = false;
     statusEl.style.display = 'block';
@@ -217,8 +175,23 @@ function endGame(winner) {
     }, 1200);
 }
 
+// Start button handler
+window.addEventListener('game-start', () => {
+    startGameLoop();
+});
+
+// Keyboard controls
 window.addEventListener('keydown', e => {
-    if (e.key.toLowerCase() === 'r' && !gameRunning) location.reload();
+    if (e.key.toLowerCase() === 'r' && !gameRunning) {
+        location.reload();
+    }
+    if (e.key === 'Escape' && gameRunning) {
+        if (document.getElementById('pause-menu').style.display === 'flex') {
+            document.getElementById('pause-menu').style.display = 'none';
+        } else {
+            document.getElementById('pause-menu').style.display = 'flex';
+        }
+    }
 });
 
 async function start() {
@@ -228,7 +201,6 @@ async function start() {
 
     engine.runRenderLoop(() => scene.render());
     window.addEventListener('resize', () => engine.resize());
-    gameLoop();
 }
 
 start();
