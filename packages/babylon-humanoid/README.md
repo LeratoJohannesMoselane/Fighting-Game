@@ -14,40 +14,32 @@ primitives in code; the motion comes from the downloaded `.glb` clips.
 pnpm add @babylonjs/core @babylonjs/loaders
 ```
 
-### 2. Get the animations — where they go, what to name them
+### 2. Get the files — you need exactly two
 
 Download **Universal Animation Library 2 [Standard]** (free, CC0) from
-<https://quaternius.itch.io/universal-animation-library-2>, then copy the `.glb`
-files into your public assets folder. In this repo that is:
+<https://quaternius.itch.io/universal-animation-library-2> and copy two files
+into `packages/babylon-humanoid/demo/public/animations/`:
+
+| Copy | From the pack | It is |
+| --- | --- | --- |
+| `Mannequin_F.glb` | `Female Mannequin/Unreal-Godot/` | The **character** (rigged) |
+| `UAL2_Standard.glb` | `Unreal-Godot/` | **All animations** in one file |
 
 ```
-packages/babylon-humanoid/demo/public/animations/
+demo/public/animations/
+├── Mannequin_F.glb
+└── UAL2_Standard.glb
 ```
 
-Files there are served from the web root, so `IDLE_NO.glb` → `/animations/IDLE_NO.glb`.
+**Ignore the `Unity/` folder** — it holds `.fbx`, which Babylon cannot load.
+The `Unreal-Godot/` folder is the right one: `.glb` is glTF binary, Babylon's
+native format. Also ignore `.blend` (that's Blender source).
 
-**Keep the original filenames.** Clip names live *inside* each `.glb`; you map
-them to your own keys in code, so renaming files on disk gains nothing.
+`UAL2_Standard_RM.glb` is the same clips **with root motion** (the character
+travels through space). Start with the plain file.
 
-The pack comes in one of two layouts, and both are supported:
-
-**A — one combined library** (the Godot export, usually easiest):
-
-```
-animations/AnimationLibrary_Godot_Standard.glb    ← all clips in ONE file
-```
-
-**B — one file per clip:**
-
-```
-animations/IDLE_NO.glb
-animations/WALK_CARRY.glb
-animations/SWORD_REGULAR_A.glb
-```
-
-> **Characters?** You don't need one. The character is generated in code by
-> `createProceduralCharacter()`. Only add a model file if you later want to
-> replace the box-man — see "Using a real model" below.
+**Keep the original filenames** — clip names live *inside* the `.glb`, and you
+map them to your own keys in code.
 
 Full placement guide: [`demo/public/animations/README.md`](demo/public/animations/README.md)
 
@@ -58,7 +50,7 @@ There is no universal bone-naming standard. Run this once and read the console:
 ```ts
 import { printGlbBoneNames } from '@aether-break/babylon-humanoid';
 
-await printGlbBoneNames(scene, '/animations/IDLE_NO.glb');
+await printGlbBoneNames(scene, '/animations/UAL2_Standard.glb');
 ```
 
 ```
@@ -70,48 +62,49 @@ Matched slots    : 22 / 22
 
 Whatever it prints is the truth for your download — trust it over any table.
 
-### 4. Build the character with matching bone names
+### 4. Get a character
+
+**Option A — use the pack's mannequin (recommended).** It's rigged with the
+exact skeleton the animations were authored for, so retargeting is a perfect
+1:1 name match with no proportion or rest-pose mismatch:
 
 ```ts
-import {
-  createProceduralCharacter,
-  UNITY_SCHEME,   // or MIXAMO_SCHEME / UNREAL_SCHEME / BLENDER_SCHEME
-} from '@aether-break/babylon-humanoid';
+import { loadRiggedCharacter } from '@aether-break/babylon-humanoid';
+
+const hero = await loadRiggedCharacter(scene, '/animations/Mannequin_F.glb');
+```
+
+**Option B — generate one in code** (no asset needed at all):
+
+```ts
+import { createProceduralCharacter, UNITY_SCHEME } from '@aether-break/babylon-humanoid';
 
 const hero = createProceduralCharacter(scene, { scheme: UNITY_SCHEME });
 ```
 
+Everything downstream is identical — `CharacterController` takes either.
+
 ### 5. Load + retarget + play
 
-**Layout A — one combined library.** Map the pack's clip names to your own keys:
+`UAL2_Standard.glb` is a **combined library** — every clip in one file:
 
 ```ts
 import { CharacterController } from '@aether-break/babylon-humanoid';
 
 const controller = new CharacterController(scene, hero);
 
-await controller.loadLibrary('/animations/AnimationLibrary_Godot_Standard.glb', {
-  only:   ['Idle', 'Walk', 'Sword_Slash'],          // skip the other 120+
+await controller.loadLibrary('/animations/UAL2_Standard.glb', {
+  only:   ['Idle', 'Walk', 'Sword_Slash'],          // omit to load all
   rename: { Idle: 'idle', Walk: 'walk', Sword_Slash: 'attack' },
 });
 
 controller.play('idle');
 ```
 
-**Layout B — one file per clip:**
+Use the names `printGlbBoneNames` / `inspectGlb` printed — don't guess them.
 
-```ts
-await controller.loadAll([
-  { key: 'idle',  url: '/animations/IDLE_NO.glb',          loop: true },
-  { key: 'walk',  url: '/animations/WALK_CARRY.glb',       loop: true, inPlace: true },
-  { key: 'sword', url: '/animations/SWORD_REGULAR_A.glb',  loop: false },
-]);
-
-controller.play('idle');
-```
-
-Not sure what's inside your file? `await printGlbBoneNames(scene, url)` lists
-every clip name and bone name in your actual download.
+If you instead have one `.glb` per clip, `controller.loadAll([{ key, url }, …])`
+does the same job.
 
 ### 6. Drive it from gameplay
 
@@ -221,6 +214,8 @@ files, then reports what it found on screen.
 | Export | Purpose |
 | --- | --- |
 | `createProceduralCharacter(scene, opts)` | Skinned box-man + 22-bone rig |
+| `loadRiggedCharacter(scene, url, opts)` | Load a real rigged model (`Mannequin_F.glb`) |
+| `describeRig(character)` | How well a rig maps to the humanoid slots |
 | `CharacterController` | Clip library + cross-fading state machine |
 | `loadAndRetargetClip(scene, url, skeleton, opts)` | Load one `.glb`, retarget it |
 | `loadAnimationLibrary(scene, url, skeleton, opts)` | Load a **combined** multi-clip `.glb`, keyed by clip name |
@@ -231,26 +226,12 @@ files, then reports what it found on screen.
 | `detectScheme(boneNames)` | Identify + repair a naming scheme |
 | `slotForBoneName(name)` | Any bone name → semantic slot |
 
-### Using a real model instead of the box-man
-
-Nothing here is tied to the procedural character — `retargetAnimationGroup()`
-takes any skeleton. Drop a rigged `.glb` in `demo/public/models/` and retarget
-onto its own rig:
-
-```ts
-const model = await LoadAssetContainerAsync('/models/hero.glb', scene);
-model.addAllToScene();
-await loadAnimationLibrary(scene, libraryUrl, model.skeletons[0]);
-```
-
-Caveat: a third-party model's rest pose and joint orientations may not match the
-animation's, which renaming alone cannot fix (see Troubleshooting).
-
 ### Root motion
 
-Quaternius ships root-motion and in-place variants. If you picked a root-motion
-file but want the character to stay put, use `inPlace: true` (or call
-`stripRootMotion`) — it removes the hips *position* track and keeps rotations.
+The pack ships both variants: `UAL2_Standard.glb` (in place) and
+`UAL2_Standard_RM.glb` (**R**oot **M**otion — the character travels). If you
+load the RM file but want in-place, pass `inPlace: true` (or call
+`stripRootMotion`) — it drops the hips *position* track and keeps rotations.
 
 ---
 

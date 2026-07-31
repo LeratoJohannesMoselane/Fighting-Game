@@ -1,5 +1,8 @@
 /**
- * Thin animation state machine over a procedural character.
+ * Thin animation state machine over a character.
+ *
+ * Works with either a procedural box-man or a real rigged model
+ * (both satisfy AnimatableCharacter).
  *
  * Keeps a named library of retargeted clips and cross-fades between them, so
  * gameplay code says `controller.play('walk')` instead of juggling
@@ -14,7 +17,7 @@ import {
   loadAnimationLibrary,
   type LoadClipOptions,
 } from './animationLibrary';
-import type { ProceduralCharacter } from './proceduralCharacter';
+import type { AnimatableCharacter } from './types';
 
 export interface ClipSpec {
   /** Key you'll use at runtime, e.g. 'idle'. */
@@ -33,7 +36,7 @@ export class CharacterController {
 
   constructor(
     private readonly scene: Scene,
-    private readonly character: ProceduralCharacter,
+    private readonly character: AnimatableCharacter,
   ) {}
 
   /**

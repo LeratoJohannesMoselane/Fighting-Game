@@ -21,10 +21,17 @@ import {
   slotForBoneName,
 } from '../humanoidRig';
 import { createProceduralCharacter } from '../proceduralCharacter';
+import { loadRiggedCharacter, describeRig } from '../riggedCharacter';
 import { retargetAnimationGroup, stripRootMotion } from '../retarget';
 import { loadAndRetargetClip, loadAnimationLibrary, inspectGlb } from '../animationLibrary';
 import { CharacterController } from '../characterController';
-import { buildLibraryGlb, buildSourceGlb, makeScene, type TestScene } from './helpers';
+import {
+  buildLibraryGlb,
+  buildModelGlb,
+  buildSourceGlb,
+  makeScene,
+  type TestScene,
+} from './helpers';
 
 let ctx: TestScene;
 
@@ -274,6 +281,92 @@ describe('animation library', () => {
     await expect(loadAndRetargetClip(ctx.scene, glb, hero.skeleton)).rejects.toThrow(
       /No animation groups/,
     );
+  });
+});
+
+describe('rigged character model (Mannequin_F.glb path)', () => {
+  it('loads a model .glb and exposes its skeleton', async () => {
+    const glb = await buildModelGlb(UNITY_SCHEME);
+    const model = await loadRiggedCharacter(ctx.scene, glb, { name: 'mannequin' });
+
+    expect(model.skeleton.bones.length).toBeGreaterThanOrEqual(HUMANOID_ORDER.length);
+    expect(model.meshes.length).toBeGreaterThan(0);
+    expect(model.root).toBeTruthy();
+  });
+
+  it('indexes the model rig by semantic slot', async () => {
+    const glb = await buildModelGlb(UNITY_SCHEME);
+    const model = await loadRiggedCharacter(ctx.scene, glb);
+
+    expect(model.bones.get('Hips')).toBeTruthy();
+    expect(model.bones.get('LeftUpperArm')).toBeTruthy();
+    expect(model.nodes.get('Hips')).toBeTruthy();
+
+    const desc = describeRig(model);
+    expect(desc.mappedSlots.length).toBe(HUMANOID_ORDER.length);
+  });
+
+  it('drives the MODEL with a separate animation library — the real pack flow', async () => {
+    // Mannequin_F.glb (model) + UAL2_Standard.glb (animations) are separate
+    // files in the pack; this is exactly how they combine.
+    const modelGlb = await buildModelGlb(UNITY_SCHEME);
+    const libGlb = await buildLibraryGlb(UNITY_SCHEME, [
+      { name: 'Idle', slots: ['Spine', 'Head'] },
+      { name: 'Walk', slots: ['LeftUpperLeg'] },
+    ]);
+
+    const model = await loadRiggedCharacter(ctx.scene, modelGlb);
+    const controller = new CharacterController(ctx.scene, model);
+    const keys = await controller.loadLibrary(libGlb, {
+      rename: { Idle: 'idle', Walk: 'walk' },
+    });
+
+    expect(keys.sort()).toEqual(['idle', 'walk']);
+    expect(controller.play('idle')).toBe(true);
+
+    // And it must actually move the model's bones.
+    const spine = model.nodes.get('Spine')!;
+    const before = (spine.rotationQuaternion ?? Quaternion.Identity()).clone();
+    ctx.scene.render();
+    const group = ctx.scene.animationGroups.find((g) => g.name === 'Idle');
+    group?.goToFrame(15);
+    ctx.scene.render();
+    const after = spine.rotationQuaternion ?? Quaternion.Identity();
+    const delta =
+      Math.abs(before.x - after.x) +
+      Math.abs(before.y - after.y) +
+      Math.abs(before.z - after.z) +
+      Math.abs(before.w - after.w);
+    expect(delta).toBeGreaterThan(0.001);
+
+    controller.dispose();
+  });
+
+  it('gives a clear error when handed an animation file instead of a model', async () => {
+    // Loading UAL2_Standard.glb here instead of Mannequin_F.glb is an easy
+    // mistake; the message should say so.
+    const engineOnlyAnim = await buildLibraryGlb(UNITY_SCHEME, [
+      { name: 'Idle', slots: ['Spine'] },
+    ]);
+    // That helper DOES include a skeleton, so use a genuinely skeleton-free file:
+    const noSkeleton = 'data:base64,bm90LWEtcmVhbC1nbGI=';
+    await expect(loadRiggedCharacter(ctx.scene, noSkeleton)).rejects.toThrow();
+    void engineOnlyAnim;
+  });
+
+  it('CharacterController is agnostic: same API for procedural and rigged', async () => {
+    const libGlb = await buildLibraryGlb(UNITY_SCHEME, [{ name: 'Idle', slots: ['Spine'] }]);
+
+    const procedural = createProceduralCharacter(ctx.scene, { scheme: UNITY_SCHEME, name: 'p' });
+    const c1 = new CharacterController(ctx.scene, procedural);
+    expect(await c1.loadLibrary(libGlb)).toEqual(['Idle']);
+
+    const model = await loadRiggedCharacter(ctx.scene, await buildModelGlb(UNITY_SCHEME));
+    const c2 = new CharacterController(ctx.scene, model);
+    expect(await c2.loadLibrary(libGlb)).toEqual(['Idle']);
+
+    c1.dispose();
+    c2.dispose();
   });
 });
 

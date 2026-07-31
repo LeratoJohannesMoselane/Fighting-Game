@@ -1,143 +1,126 @@
-# Put your `.glb` animation files in THIS folder
+# Put your `.glb` files in THIS folder
 
 **Full path:** `packages/babylon-humanoid/demo/public/animations/`
 
-Anything in here is served from the web root, so a file called
-`IDLE_NO.glb` becomes the URL **`/animations/IDLE_NO.glb`**.
+Files here are served from the web root, so `Mannequin_F.glb` becomes the URL
+**`/animations/Mannequin_F.glb`**.
 
 ---
 
-## Which files, and what to call them
+## You need exactly TWO files
 
-**Short answer: do not rename anything.** Keep the pack's original filenames.
-The loader reads the clip names from *inside* each `.glb`, and you map those to
-your own gameplay keys in code — renaming files on disk buys you nothing and
-makes it harder to re-download later.
+From your extracted `Universal Animation Library 2[Standard]` folder:
 
-### Step 1 — download
+| Copy this | From | It is |
+| --- | --- | --- |
+| **`Mannequin_F.glb`** | `Female Mannequin/Unreal-Godot/` | The **character** (rigged model) |
+| **`UAL2_Standard.glb`** | `Unreal-Godot/` | **All the animations** in one file |
 
-Get **Universal Animation Library 2 [Standard]** (free, CC0) from
-<https://quaternius.itch.io/universal-animation-library-2>
-
-### Step 2 — find the GLB files
-
-Unzip it. Depending on the engine folder you look in, you get one of two
-layouts. **Both work** — the demo auto-detects which one you have.
-
-#### Layout A — one combined library (the Godot export)
+Result:
 
 ```
-demo/public/animations/
-└── AnimationLibrary_Godot_Standard.glb     ← all 40+ clips in ONE file
+packages/babylon-humanoid/demo/public/animations/
+├── Mannequin_F.glb      ← character
+└── UAL2_Standard.glb    ← every animation clip
 ```
 
-This single file contains every animation as a separately named clip
-(`Idle`, `Walk`, `Sword_Slash`, …). This is usually the easiest option.
+**Do not rename them.** Clip names live *inside* `UAL2_Standard.glb`; you map
+those to your own keys in code.
 
-#### Layout B — one file per clip
+Then just run the demo — those are the default paths:
 
+```bash
+pnpm --filter @aether-break/babylon-humanoid demo
 ```
-demo/public/animations/
-├── IDLE_NO.glb
-├── WALK_CARRY.glb
-└── SWORD_REGULAR_A.glb
-```
-
-### Step 3 — point the demo at them
-
-Open `demo/main.ts` and edit the config block at the top.
-
-**For Layout A:**
-
-```ts
-const LIBRARY_URL = '/animations/AnimationLibrary_Godot_Standard.glb';
-const LIBRARY_ONLY = ['Idle', 'Walk', 'Sword_Slash']; // [] = load all
-```
-
-**For Layout B:**
-
-```ts
-const LIBRARY_URL = null;
-const CLIPS = [
-  { key: 'idle',  url: '/animations/IDLE_NO.glb',         loop: true },
-  { key: 'walk',  url: '/animations/WALK_CARRY.glb',      loop: true, inPlace: true },
-  { key: 'sword', url: '/animations/SWORD_REGULAR_A.glb', loop: false },
-];
-```
-
-### Step 4 — find out the real clip names
-
-Don't guess what's inside the file. Run the demo and open the browser console:
-
-```js
-await demo.inspectGlb('/animations/AnimationLibrary_Godot_Standard.glb');
-```
-
-It prints every clip name and every bone name in your actual download. Use
-those exact strings in `LIBRARY_ONLY` / `rename`.
 
 ---
 
-## Naming: file vs. clip vs. gameplay key
+## Which files to ignore, and why
 
-Three different names, easy to conflate:
+Your download has more than you need:
+
+| File | Use it? | Why |
+| --- | --- | --- |
+| `Unreal-Godot/UAL2_Standard.glb` | ✅ **Yes** | The animations. glTF = native for Babylon. |
+| `Female Mannequin/Unreal-Godot/Mannequin_F.glb` | ✅ **Yes** | Rigged character, matching skeleton. |
+| `Unreal-Godot/UAL2_Standard_RM.glb` | ⚠️ Optional | Same clips **with root motion** — the character physically travels. Use it if you want movement driven by the animation; otherwise the plain file is simpler. |
+| `Unity/*.fbx` | ❌ No | **Babylon cannot load FBX.** Use the Unreal-Godot `.glb` files. |
+| `Mannequin_F.blend` | ❌ No | Blender source — you're not using Blender. |
+| `*_Setup.png`, `README.txt` | ❌ No | Engine setup screenshots for Unity/Unreal/Godot. |
+
+> **The `Unreal-Godot` folder is the right one** despite the name — those are
+> `.glb` (glTF binary), which is Babylon's native 3D format. The `Unity` folder
+> is `.fbx`, which Babylon has no loader for.
+
+---
+
+## Root motion: `UAL2_Standard.glb` vs `UAL2_Standard_RM.glb`
+
+- **`UAL2_Standard.glb`** — animations play *in place*. The character runs on
+  the spot; you move it in code (`character.root.position`). **Start here** —
+  it's what most game code expects.
+- **`UAL2_Standard_RM.glb`** — `RM` = **Root Motion**. The hips translate, so
+  the character physically travels as the clip plays.
+
+If you load the RM file but want in-place, strip it at load time:
+
+```ts
+await controller.loadLibrary('/animations/UAL2_Standard_RM.glb', { inPlace: true });
+```
+
+---
+
+## Three different "names" — don't conflate them
 
 | | Example | Who decides |
 | --- | --- | --- |
-| **File name** | `AnimationLibrary_Godot_Standard.glb` | Quaternius — leave it alone |
-| **Clip name** (inside the file) | `Sword_Slash` | Quaternius — read it with `inspectGlb` |
+| **File name** | `UAL2_Standard.glb` | Quaternius — leave it alone |
+| **Clip name** (inside the file) | `Sword_Slash` | Quaternius — read it, don't guess |
 | **Your key** | `attack` | **You** — map it in code |
 
-Map clip names to your own keys so gameplay code stays readable:
+Find the real clip names (the browser console, once the demo is running):
+
+```js
+await demo.inspectGlb('/animations/UAL2_Standard.glb');
+```
+
+Then map them:
 
 ```ts
-await controller.loadLibrary('/animations/AnimationLibrary_Godot_Standard.glb', {
-  rename: {
-    Idle: 'idle',
-    Walk: 'walk',
-    Sword_Slash: 'attack',
-  },
-  only: ['Idle', 'Walk', 'Sword_Slash'],
+await controller.loadLibrary('/animations/UAL2_Standard.glb', {
+  only:   ['Idle', 'Walk', 'Sword_Slash'],           // whatever inspect printed
+  rename: { Idle: 'idle', Walk: 'walk', Sword_Slash: 'attack' },
 });
-
 controller.play('attack');
 ```
 
-If you skip `rename`, the clip keeps its original name and you call
-`controller.play('Sword_Slash')`.
+Leave `LIBRARY_ONLY` and `RENAME` empty on the first run — the demo will load
+everything and put a button on screen for each clip, which is the quickest way
+to see the real names.
 
 ---
 
-## Where do CHARACTERS go?
+## "Where do the characters go?"
 
-**You don't need a character file.** The character is built in code by
-`createProceduralCharacter()` — that's the whole point of this package, since
-you're not using Blender.
+Same folder — `Mannequin_F.glb` sits right next to the animation file.
 
-If you later want a *real* rigged model, put it in this same folder
-(`demo/public/animations/` or a sibling `demo/public/models/`) and load it with
-`LoadAssetContainerAsync`. Then retarget onto **its** skeleton instead of the
-procedural one — `retargetAnimationGroup()` takes any skeleton:
+You have two options, and **the mannequin is the better one**:
 
-```ts
-const model = await LoadAssetContainerAsync('/models/hero.glb', scene);
-model.addAllToScene();
-const skeleton = model.skeletons[0];          // the model's own rig
-await loadAnimationLibrary(scene, libraryUrl, skeleton);
-```
+1. **`Mannequin_F.glb` (recommended).** It's rigged with the *same skeleton*
+   the animations were authored against, so retargeting is a perfect 1:1 match
+   — no proportion or rest-pose mismatch. This is the demo default.
+2. **Procedural box-man.** Set `MODEL_URL = null` in `demo/main.ts`. Useful if
+   you want a character with zero asset dependencies.
 
-Good CC0 sources for rigged characters that pair with this pack: **KayKit**,
-**Kenney**, and Quaternius' own character kits.
+Either way the rest of the code is identical — `CharacterController` accepts
+both.
 
 ---
 
-## Note on version control
+## Version control
 
-`.glb` files here are **gitignored** — they're CC0 and safe to ship, but they
-aren't committed to this repo. Each developer downloads their own copy.
-
-If you'd rather commit them (simpler for a small team), delete these two lines
-from the repo root `.gitignore`:
+`.glb` files here are **gitignored**. They're CC0 so committing them is legal
+and fine; to do that, delete these lines from the repo root `.gitignore`:
 
 ```
 packages/babylon-humanoid/demo/public/animations/*.glb

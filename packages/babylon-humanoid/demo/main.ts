@@ -24,40 +24,42 @@ import '@babylonjs/loaders/glTF/2.0';
 import {
   CharacterController,
   createProceduralCharacter,
+  loadRiggedCharacter,
+  describeRig,
   inspectGlb,
   UNITY_SCHEME,
   detectScheme,
-  type ClipSpec,
+  type AnimatableCharacter,
   type NamingScheme,
 } from '../src/index';
-import { HUMANOID_ORDER, KNOWN_SCHEMES } from '../src/humanoidRig';
+import { HUMANOID_ORDER } from '../src/humanoidRig';
 
 /**
- * EDIT ME
+ * CONFIG — matches the real Universal Animation Library 2 [Standard] layout.
  *
- * The pack ships in two possible layouts, and the demo supports both:
+ * Copy these two files out of the extracted pack into demo/public/animations/ :
  *
- *  A) ONE COMBINED LIBRARY (what the Godot export gives you)
- *     demo/public/animations/AnimationLibrary_Godot_Standard.glb
- *     → every clip lives inside that single file, already named.
- *     Set LIBRARY_URL and leave CLIPS empty.
+ *   Female Mannequin/Unreal-Godot/Mannequin_F.glb   → the CHARACTER model
+ *   Unreal-Godot/UAL2_Standard.glb                  → ALL the animations
  *
- *  B) ONE FILE PER CLIP (if you exported them individually)
- *     demo/public/animations/IDLE_NO.glb, WALK_CARRY.glb, ...
- *     → list them in CLIPS and leave LIBRARY_URL null.
- *
- * The demo tries the library first, then falls back to the individual files.
+ * (`UAL2_Standard_RM.glb` is the same clips WITH root motion — the character
+ *  travels through space. Use the plain one for in-place locomotion.)
  */
-const LIBRARY_URL: string | null = '/animations/AnimationLibrary_Godot_Standard.glb';
 
-/** Only load these from the library (it may hold 130+). Empty = load all. */
+/** The rigged character. Set to null to use the procedural box-man instead. */
+const MODEL_URL: string | null = '/animations/Mannequin_F.glb';
+
+/** The combined animation library — every clip lives in this one file. */
+const LIBRARY_URL: string | null = '/animations/UAL2_Standard.glb';
+
+/**
+ * Only load these clips (the library holds 40+ in the free tier).
+ * Leave empty to load everything, then read the real names off the buttons.
+ */
 const LIBRARY_ONLY: string[] = [];
 
-const CLIPS: ClipSpec[] = [
-  { key: 'idle', url: '/animations/IDLE_NO.glb', loop: true },
-  { key: 'walk', url: '/animations/WALK_CARRY.glb', loop: true, inPlace: true },
-  { key: 'sword', url: '/animations/SWORD_REGULAR_A.glb', loop: false },
-];
+/** Map the pack's clip names onto your own gameplay keys. */
+const RENAME: Record<string, string> = {};
 
 const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
 const engine = new Engine(canvas, true, { stencil: true, antialias: true });
@@ -96,8 +98,8 @@ ground.material = grid;
  * use different names, the loader still bridges it semantically — and the
  * on-screen report will tell you exactly what was detected.
  */
-let scheme: NamingScheme = UNITY_SCHEME;
-let character = createProceduralCharacter(scene, { scheme, name: 'hero' });
+const scheme: NamingScheme = UNITY_SCHEME;
+let character: AnimatableCharacter = createProceduralCharacter(scene, { scheme, name: 'hero' });
 let controller = new CharacterController(scene, character);
 let viewer: SkeletonViewer | null = null;
 
@@ -131,7 +133,10 @@ function rebuildButtons(keys: string[]): void {
       viewer = null;
       return;
     }
-    viewer = new SkeletonViewer(character.skeleton, character.mesh, scene, false, 3, {
+    // Either character shape works; find any mesh bound to this skeleton.
+    const skinned = scene.meshes.find((m) => m.skeleton === character.skeleton);
+    if (!skinned) return;
+    viewer = new SkeletonViewer(character.skeleton, skinned, scene, false, 3, {
       displayMode: SkeletonViewer.DISPLAY_SPHERE_AND_SPURS,
     });
     viewer.isEnabled = true;
@@ -146,73 +151,64 @@ function highlight(active: string): void {
 }
 
 async function boot(): Promise<void> {
-  setLog('Loading animations…');
+  setLog('Loading…');
+  let note = '';
 
-  // Inspect the first clip so we can report the real bone names. This is the
-  // step that removes all guesswork about which naming scheme the pack uses.
-  let detectedNote = '';
-  const probeUrl = LIBRARY_URL ?? CLIPS[0]?.url;
+  // ---- 1. Character: real model if provided, else the procedural box-man ----
+  if (MODEL_URL) {
+    try {
+      const model = await loadRiggedCharacter(scene, MODEL_URL, { name: 'mannequin' });
+      const desc = describeRig(model);
+      character.dispose();
+      controller.dispose();
+      character = model;
+      controller = new CharacterController(scene, character);
+      note +=
+        `<b>Model:</b> <code>${MODEL_URL}</code> — ` +
+        `${desc.boneCount} bones, ${desc.mappedSlots.length}/${HUMANOID_ORDER.length} humanoid slots mapped<br>`;
+    } catch {
+      note +=
+        `<span class="warn">Could not load <code>${MODEL_URL}</code></span> — ` +
+        `using the procedural character instead.<br>`;
+    }
+  }
+
+  // ---- 2. Inspect the animation source so nothing is guesswork ----
+  const probeUrl = LIBRARY_URL ?? MODEL_URL;
   if (probeUrl) {
     try {
       const info = await inspectGlb(scene, probeUrl);
-      const det = info.detected;
-      detectedNote =
-        `<b>Detected rig:</b> ${det.schemeName} — matched ${det.matched.length}/${HUMANOID_ORDER.length} slots<br>` +
-        `<b>Bones in file (${info.boneNames.length}):</b> <code>${info.boneNames.slice(0, 10).join(', ')}${info.boneNames.length > 10 ? ', …' : ''}</code><br>`;
-      if (det.missing.length) {
-        detectedNote += `<span class="warn">Unmapped slots: ${det.missing.join(', ')}</span><br>`;
-      }
-
-      // If the file matches a known scheme better than our default, rebuild
-      // the character with those exact names for a 1:1 match.
-      const better = KNOWN_SCHEMES.find((s) => s.name === det.schemeName);
-      if (better && det.schemeName !== 'unity' && det.matched.length >= 15) {
-        controller.dispose();
-        character.dispose();
-        scheme = better.scheme;
-        character = createProceduralCharacter(scene, { scheme, name: 'hero' });
-        controller = new CharacterController(scene, character);
-        detectedNote += `<b>Rebuilt rig using the <code>${det.schemeName}</code> naming scheme.</b><br>`;
-      }
+      note +=
+        `<b>Rig naming:</b> ${info.detected.schemeName} ` +
+        `(${info.detected.matched.length}/${HUMANOID_ORDER.length} slots)<br>` +
+        `<b>Clips in file:</b> ${info.animationGroupNames.length}<br>`;
     } catch {
-      detectedNote =
-        `<span class="warn">Could not read <code>${probeUrl}</code>.</span><br>` +
+      note +=
+        `<span class="warn">Could not read <code>${probeUrl}</code>.</span> ` +
         `Put the pack's .glb files in <code>demo/public/animations/</code>.<br>`;
     }
   }
 
-  // Layout A: one combined library file.
+  // ---- 3. Animations ----
   let loaded: string[] = [];
-  let failed: string[] = [];
-
   if (LIBRARY_URL) {
     try {
       loaded = await controller.loadLibrary(LIBRARY_URL, {
         ...(LIBRARY_ONLY.length ? { only: LIBRARY_ONLY } : {}),
+        ...(Object.keys(RENAME).length ? { rename: RENAME } : {}),
       });
-      if (loaded.length) {
-        detectedNote += `<b>Loaded ${loaded.length} clip(s) from the combined library.</b><br>`;
-      }
     } catch {
-      /* fall through to per-file loading */
+      /* reported below */
     }
-  }
-
-  // Layout B: individual per-clip files.
-  if (loaded.length === 0) {
-    const r = await controller.loadAll(CLIPS);
-    loaded = r.loaded;
-    failed = r.failed;
   }
 
   if (loaded.length === 0) {
     setLog(
-      detectedNote +
-        `<span class="warn">No animations loaded.</span> The character is shown in its ` +
-        `T-pose bind pose.<br><br>` +
-        `<b>To fix:</b> download <i>Universal Animation Library 2 [Standard]</i>, ` +
-        `copy the <code>/GLB/</code> files into <code>demo/public/animations/</code>, ` +
-        `then reload.`,
+      note +
+        `<span class="warn">No animations loaded.</span> Showing the bind pose.<br><br>` +
+        `<b>To fix:</b> copy <code>Unreal-Godot/UAL2_Standard.glb</code> and ` +
+        `<code>Female Mannequin/Unreal-Godot/Mannequin_F.glb</code> from the pack into ` +
+        `<code>demo/public/animations/</code>, then reload.`,
     );
     rebuildButtons([]);
     return;
@@ -221,12 +217,7 @@ async function boot(): Promise<void> {
   rebuildButtons(loaded);
   controller.play(loaded[0]!);
   highlight(loaded[0]!);
-
-  setLog(
-    detectedNote +
-      `<b>Loaded:</b> ${loaded.join(', ')}` +
-      (failed.length ? `<br><span class="warn">Failed: ${failed.join(', ')}</span>` : ''),
-  );
+  setLog(note + `<b>Loaded ${loaded.length} clip(s).</b> Click a name to play it.`);
 }
 
 void boot();

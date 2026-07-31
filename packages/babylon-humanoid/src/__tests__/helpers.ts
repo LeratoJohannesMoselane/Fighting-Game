@@ -126,6 +126,65 @@ export async function buildLibraryGlb(
   return 'data:base64,' + buf.toString('base64');
 }
 
+/**
+ * Build a MODEL .glb: a skinned mesh + skeleton and NO animations — i.e. the
+ * shape of `Mannequin_F.glb` from the pack.
+ */
+export async function buildModelGlb(scheme: NamingScheme): Promise<string> {
+  const engine = new NullEngine();
+  const scene = new Scene(engine);
+
+  const root = new TransformNode('Armature', scene);
+  const skeleton = new Skeleton('rig', 'rig', scene);
+  const bones = new Map<HumanoidSlot, Bone>();
+  const nodes = new Map<HumanoidSlot, TransformNode>();
+
+  HUMANOID_ORDER.forEach((slot, i) => {
+    const parentSlot = HUMANOID_PARENTS[slot];
+    const off = REST_OFFSETS[slot];
+    const bone = new Bone(
+      scheme[slot],
+      skeleton,
+      parentSlot ? bones.get(parentSlot)! : null,
+      Matrix.Translation(off.x, off.y, off.z),
+      null,
+      null,
+      i,
+    );
+    bones.set(slot, bone);
+    const node = new TransformNode(scheme[slot], scene);
+    node.position.copyFrom(off);
+    node.rotationQuaternion = Quaternion.Identity();
+    node.parent = parentSlot ? nodes.get(parentSlot)! : root;
+    nodes.set(slot, node);
+    bone.linkTransformNode(node);
+  });
+
+  const mesh = new Mesh('Body', scene);
+  const box = CreateBoxVertexData({ width: 0.4, height: 1.6, depth: 0.25 });
+  const vd = new VertexData();
+  vd.positions = box.positions as number[];
+  vd.normals = box.normals as number[];
+  vd.indices = box.indices as number[];
+  vd.applyToMesh(mesh, true);
+  const count = (vd.positions as number[]).length / 3;
+  mesh.setVerticesData(VertexBuffer.MatricesIndicesKind, new Array(count * 4).fill(0), false, 4);
+  mesh.setVerticesData(
+    VertexBuffer.MatricesWeightsKind,
+    Array.from({ length: count * 4 }, (_, k) => (k % 4 === 0 ? 1 : 0)),
+    false,
+    4,
+  );
+  mesh.skeleton = skeleton;
+  mesh.parent = root;
+
+  const exported = await GLTF2Export.GLBAsync(scene, 'model');
+  const buf = Buffer.from(await (exported.glTFFiles['model.glb'] as Blob).arrayBuffer());
+  scene.dispose();
+  engine.dispose();
+  return 'data:base64,' + buf.toString('base64');
+}
+
 export interface SourceGlbOptions {
   /** Which slots get rotation tracks. */
   animatedSlots?: HumanoidSlot[];

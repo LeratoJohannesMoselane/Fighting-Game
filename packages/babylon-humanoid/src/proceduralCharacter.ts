@@ -24,6 +24,7 @@ import { CreateBoxVertexData } from '@babylonjs/core/Meshes/Builders/boxBuilder'
 import { CreateSphereVertexData } from '@babylonjs/core/Meshes/Builders/sphereBuilder';
 import { CreateCylinderVertexData } from '@babylonjs/core/Meshes/Builders/cylinderBuilder';
 
+import type { AnimatableCharacter } from './types';
 import {
   HUMANOID_ORDER,
   HUMANOID_PARENTS,
@@ -67,7 +68,7 @@ export const REST_OFFSETS: Record<HumanoidSlot, Vector3> = {
   RightToes: new Vector3(0, -0.07, 0.12),
 };
 
-export interface ProceduralCharacter {
+export interface ProceduralCharacter extends AnimatableCharacter {
   root: TransformNode;
   mesh: Mesh;
   skeleton: Skeleton;

@@ -23,6 +23,9 @@ export {
 export type { HumanoidSlot, NamingScheme } from './humanoidRig';
 
 export { createProceduralCharacter, REST_OFFSETS } from './proceduralCharacter';
+export { loadRiggedCharacter, describeRig } from './riggedCharacter';
+export type { RiggedCharacter, LoadRiggedOptions } from './riggedCharacter';
+export type { AnimatableCharacter } from './types';
 export type { ProceduralCharacter, BuildOptions } from './proceduralCharacter';
 
 export { retargetAnimationGroup, stripRootMotion, crossFade } from './retarget';
