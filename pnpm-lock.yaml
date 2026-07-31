@@ -57,6 +57,9 @@ importers:
 
   packages/babylon-humanoid:
     devDependencies:
+      '@aether-break/combat-core':
+        specifier: workspace:*
+        version: link:../combat-core
       '@aether-break/config':
         specifier: workspace:*
         version: link:../config

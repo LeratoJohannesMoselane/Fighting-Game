@@ -39,5 +39,20 @@ export {
 } from './animationLibrary';
 export type { LoadedClip, LoadClipOptions } from './animationLibrary';
 
+export { createFighterFactory } from './fighterRig';
+export type { FighterRig, FighterFactory, CreateFighterFactoryOptions } from './fighterRig';
+
+export {
+  UAL2_CLIPS,
+  DEFAULT_CLIP_MAP,
+  BRAWLER_CLIP_MAP,
+  ZOMBIE_CLIP_MAP,
+  resolveClip,
+  renameFromClipMap,
+  clipsUsedBy,
+  aliasesFor,
+} from './combatClipMap';
+export type { Ual2Clip, FighterAnimKey, FighterSnapshot } from './combatClipMap';
+
 export { CharacterController } from './characterController';
 export type { ClipSpec } from './characterController';

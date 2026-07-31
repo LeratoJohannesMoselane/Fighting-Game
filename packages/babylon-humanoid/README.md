@@ -112,6 +112,28 @@ does the same job.
 controller.play(isMoving ? 'walk' : 'idle');   // cross-fades automatically
 ```
 
+**Building an actual game with two fighters?** See
+**[USING_IN_YOUR_GAME.md](USING_IN_YOUR_GAME.md)** — `createFighterFactory()`
+spawns N independently-animated fighters from one model file, and
+`resolveClip()` maps CombatCore fighter state onto the pack's clip names.
+
+```ts
+const factory = await createFighterFactory(scene, {
+  modelUrl:   '/animations/Mannequin_F.glb',
+  libraryUrl: '/animations/UAL2_Standard.glb',
+  only:    clipsUsedBy(DEFAULT_CLIP_MAP),
+  rename:  renameFromClipMap(DEFAULT_CLIP_MAP),
+  aliases: aliasesFor(DEFAULT_CLIP_MAP),
+  inPlace: true,
+});
+const p1 = factory.spawn('p1');
+const p2 = factory.spawn('p2');
+
+// each frame:
+p1.root.position.set(f.x / 1000, f.y / 1000, 0);
+p1.play(resolveClip(f));
+```
+
 ---
 
 ## Can Babylon retarget between skeletons?
@@ -216,7 +238,11 @@ files, then reports what it found on screen.
 | `createProceduralCharacter(scene, opts)` | Skinned box-man + 22-bone rig |
 | `loadRiggedCharacter(scene, url, opts)` | Load a real rigged model (`Mannequin_F.glb`) |
 | `describeRig(character)` | How well a rig maps to the humanoid slots |
-| `CharacterController` | Clip library + cross-fading state machine |
+| `CharacterController` | Clip library + cross-fading state machine (one character) |
+| `createFighterFactory(scene, opts)` | **Spawn N independent fighters** from one model — for versus games |
+| `resolveClip(fighterState)` | CombatCore phase/move → animation key |
+| `DEFAULT_CLIP_MAP` / `BRAWLER_CLIP_MAP` / `ZOMBIE_CLIP_MAP` | Gameplay key → real UAL2 clip |
+| `UAL2_CLIPS` | The 43 clip names in the Standard tier |
 | `loadAndRetargetClip(scene, url, skeleton, opts)` | Load one `.glb`, retarget it |
 | `loadAnimationLibrary(scene, url, skeleton, opts)` | Load a **combined** multi-clip `.glb`, keyed by clip name |
 | `retargetAnimationGroup(group, skeleton, name, map?)` | Low-level retarget |
