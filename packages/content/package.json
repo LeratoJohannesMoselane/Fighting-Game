@@ -1,0 +1,17 @@
+{
+  "name": "@aether-break/content",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Data-driven fighters, bots, and balance fixtures (no runtime logic).",
+  "exports": {
+    "./fighters/iria_sol.json": "./fighters/iria_sol.json",
+    "./bots/iria_sol_bots.json": "./bots/iria_sol_bots.json"
+  },
+  "scripts": {
+    "typecheck": "node -e \"JSON.parse(require('fs').readFileSync('fighters/iria_sol.json','utf8')); JSON.parse(require('fs').readFileSync('bots/iria_sol_bots.json','utf8')); console.log('content JSON OK')\"",
+    "lint": "echo 'content: data only'",
+    "build": "echo 'content: nothing to build'",
+    "validate": "node ../../scripts/validate-iria.mjs"
+  }
+}

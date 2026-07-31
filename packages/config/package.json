@@ -1,0 +1,16 @@
+{
+  "name": "@aether-break/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint.config.js": "./eslint.config.js",
+    "./vitest.preset.js": "./vitest.preset.js"
+  },
+  "scripts": {
+    "typecheck": "echo 'config: no types to check'",
+    "lint": "echo 'config: no lint target'",
+    "build": "echo 'config: nothing to build'"
+  }
+}

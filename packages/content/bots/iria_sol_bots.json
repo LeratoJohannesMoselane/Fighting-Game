@@ -1,0 +1,76 @@
+{
+  "fighterId": "iria_sol",
+  "version": "1.0.0",
+  "botProfiles": {
+    "easy": {
+      "reactionDelay": 15,
+      "errorRate": 0.3,
+      "moveSelection": "randomized",
+      "comboChance": 0.1,
+      "gatePlaceChance": 0.15,
+      "wardUseChance": 0.05,
+      "rangedSpamChance": 0.25,
+      "ultimateConfirmOnly": false,
+      "ultimateRawChance": 0.08,
+      "preferredRange": [2500, 5500],
+      "notes": "Wanders, fires bolt often, rarely wards, may raw super."
+    },
+    "normal": {
+      "reactionDelay": 8,
+      "errorRate": 0.15,
+      "moveSelection": "weighted",
+      "comboChance": 0.3,
+      "gatePlaceChance": 0.35,
+      "wardUseChance": 0.25,
+      "wardOnIncomingProjectile": 0.55,
+      "rangedSpamChance": 0.18,
+      "lightStringChance": 0.4,
+      "ultimateConfirmOnly": true,
+      "ultimateRawChance": 0.02,
+      "preferredRange": [2800, 5000],
+      "weights": {
+        "light": 0.28,
+        "heavy": 0.08,
+        "ranged": 0.22,
+        "ability1": 0.2,
+        "ability2": 0.1,
+        "dash": 0.07,
+        "guard": 0.05
+      },
+      "notes": "Maintains mid-range, places gates on cooldown when safe, wards against obvious projectiles."
+    },
+    "hard": {
+      "reactionDelay": 3,
+      "errorRate": 0.05,
+      "moveSelection": "optimal",
+      "comboChance": 0.7,
+      "gatePlaceChance": 0.55,
+      "doubleGateSetup": 0.35,
+      "wardUseChance": 0.4,
+      "wardOnIncomingProjectile": 0.85,
+      "antiAirLightChance": 0.6,
+      "punishHeavyOnBlock": true,
+      "rangedSpamChance": 0.12,
+      "ultimateConfirmOnly": true,
+      "ultimateRawChance": 0.0,
+      "sevenfoldAfterGateHit": 0.9,
+      "preferredRange": [3000, 4800],
+      "escapePressure": {
+        "backdash": 0.35,
+        "ward": 0.3,
+        "jump": 0.2,
+        "abareLight": 0.15
+      },
+      "weights": {
+        "light": 0.22,
+        "heavy": 0.1,
+        "ranged": 0.18,
+        "ability1": 0.25,
+        "ability2": 0.12,
+        "dash": 0.08,
+        "guard": 0.05
+      },
+      "notes": "Spaces with gate timers, confirms into Sevenfold, almost never raw ult, wards gun/bolt on reaction."
+    }
+  }
+}
