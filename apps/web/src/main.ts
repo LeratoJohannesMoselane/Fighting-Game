@@ -7,7 +7,6 @@
 import {
   TICK_MS,
   createInitialState,
-  fromFp,
   getKit,
   step,
   type ActionBits,
@@ -100,6 +99,8 @@ function startMatch(cfg: MatchConfig): void {
   screen = 'fight';
   menu.hide();
   input.fighting = true;
+  renderer.resetMatch();
+  renderer.unlockAudio();
   canvas.focus();
 }
 
@@ -123,20 +124,14 @@ function rematch(): void {
 }
 
 function handleEvents(events: GameEvent[], s: GameState): void {
+  // Procedural VFX + SFX (meshes/anim driven in renderer.draw)
+  renderer.handleEvents(events, s);
+
   for (const e of events) {
     if (e.type === 'hit') {
-      const attacker = s.fighters[e.attacker];
-      const defender = s.fighters[e.defender];
-      const color =
-        attacker.slot === 0
-          ? getMeta(matchConfig?.p1Id ?? 'nyra_vex').color
-          : getMeta(matchConfig?.p2Id ?? 'bram_kade').color;
-      renderer.pulseHit(fromFp(defender.x), fromFp(defender.y + 800), color, false);
       shake = Math.min(1, shake + 0.7);
       hud.flashHit();
     } else if (e.type === 'blocked') {
-      const defender = s.fighters[e.defender];
-      renderer.pulseHit(fromFp(defender.x), fromFp(defender.y + 800), '#93c5fd', true);
       shake = Math.min(1, shake + 0.25);
     } else if (e.type === 'ultimate_activated') {
       shake = 1;

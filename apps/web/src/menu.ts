@@ -1,3 +1,4 @@
+import { proceduralAudio } from './procedural';
 import { defaultMatchConfig, getMeta, ROSTER, type MatchConfig, type OpponentMode } from './roster';
 
 export type MenuResult = MatchConfig;
@@ -144,12 +145,16 @@ export function mountCharacterMenu(root: HTMLElement): {
       const slot = card.dataset.slot;
       if (slot === 'p1') config = { ...config, p1Id: id };
       else config = { ...config, p2Id: id };
+      proceduralAudio.unlock();
+      proceduralAudio.play('ui_select');
       refresh();
       return;
     }
     const modeBtn = t.closest('.mode-btn') as HTMLElement | null;
     if (modeBtn?.dataset.mode) {
       config = { ...config, opponentMode: modeBtn.dataset.mode as OpponentMode };
+      proceduralAudio.unlock();
+      proceduralAudio.play('ui_select');
       refresh();
       return;
     }
@@ -159,6 +164,8 @@ export function mountCharacterMenu(root: HTMLElement): {
         ...config,
         cpuDifficulty: diffBtn.dataset.diff as MatchConfig['cpuDifficulty'],
       };
+      proceduralAudio.unlock();
+      proceduralAudio.play('ui_select');
       refresh();
       return;
     }
@@ -170,6 +177,8 @@ export function mountCharacterMenu(root: HTMLElement): {
     resolveStart = null;
     open = false;
     overlay.classList.add('hidden');
+    proceduralAudio.unlock();
+    proceduralAudio.play('ui_start');
     done({ ...config });
   }
 

@@ -153,7 +153,8 @@ Move baselines from SRS §7.2 sample (light: startup 6, active 6–8, recovery 1
 | Monorepo scaffold | ✅ |
 | CombatCore v0 + tests | ✅ |
 | Playable 2D greybox client | ✅ canvas local 1v1 |
-| Renderer / Babylon 2.5D | ⏳ deferred |
+| Procedural mesh / anim / VFX / SFX | ✅ runtime placeholders (`apps/web/src/procedural`) |
+| Renderer / Babylon 2.5D final art | ⏳ swap-in path documented |
 | Online / rollback wire-up | ⏳ deferred |
 | Full move set / ultimates | ⏳ deferred |
 
