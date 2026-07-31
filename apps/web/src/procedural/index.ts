@@ -21,6 +21,7 @@ export {
   NYRA_PROFILE,
   BRAM_PROFILE,
   IRIA_PROFILE,
+  KELLAN_PROFILE,
 } from './profiles';
 export { resolveFighterAnimation, attackPose, idlePose } from './animation';
 export type {

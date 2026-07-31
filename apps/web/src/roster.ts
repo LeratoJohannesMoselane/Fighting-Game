@@ -1,6 +1,5 @@
 /**
- * Presentation metadata for the character select screen.
- * Combat stats come from CombatCore kits; this is UI-only.
+ * Character select metadata — SF6-inspired palettes & copy.
  */
 
 export interface CharacterMeta {
@@ -21,9 +20,9 @@ export const ROSTER: readonly CharacterMeta[] = [
     title: 'Rift Gunslinger',
     archetype: 'Mid-range / Harassment',
     difficulty: 2,
-    color: '#2ee6c5',
-    colorDim: '#147a68',
-    blurb: 'Agile bounty hunter. Twin arc pistols, quick lights, blinky pressure.',
+    color: '#00BCD4',
+    colorDim: '#4A148C',
+    blurb: 'Cocky rift hunter. Twin pistols, trench coat, Phase Step pressure.',
   },
   {
     id: 'bram_kade',
@@ -31,9 +30,9 @@ export const ROSTER: readonly CharacterMeta[] = [
     title: 'Forge Warden',
     archetype: 'Close-range / Pressure',
     difficulty: 2,
-    color: '#ff4d6d',
-    colorDim: '#8a1e35',
-    blurb: 'Armoured enforcer. Heavy hits, scattergun, furnace-forward spell.',
+    color: '#E65100',
+    colorDim: '#5D4037',
+    blurb: 'Imposing forge giant. Gauntlet slams, heat armor, ground-shaking heavies.',
   },
   {
     id: 'iria_sol',
@@ -41,9 +40,19 @@ export const ROSTER: readonly CharacterMeta[] = [
     title: 'Prism Magus',
     archetype: 'Zoner / Setup',
     difficulty: 4,
-    color: '#5ce1ff',
-    colorDim: '#a78bfa',
-    blurb: 'Runic staff & prism cards. Spaces with bolts and delayed geometry.',
+    color: '#E040FB',
+    colorDim: '#00BCD4',
+    blurb: 'Serene prism mage. Floating orbs, crystal staff, delayed geometry.',
+  },
+  {
+    id: 'kellan_wisp',
+    name: 'Kellan Wisp',
+    title: 'Stormblade',
+    archetype: 'Rushdown / Mix-up',
+    difficulty: 3,
+    color: '#00E5FF',
+    colorDim: '#1A237E',
+    blurb: 'Lightning duelist. Energy blade, coil carbine, blink-fast rushdown.',
   },
 ] as const;
 
@@ -53,7 +62,6 @@ export interface MatchConfig {
   p1Id: string;
   p2Id: string;
   opponentMode: OpponentMode;
-  /** CPU difficulty when opponentMode === 'cpu'. */
   cpuDifficulty: 'easy' | 'normal' | 'hard';
 }
 

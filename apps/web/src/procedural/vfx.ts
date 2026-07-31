@@ -14,7 +14,7 @@ interface Particle {
   maxLife: number;
   color: string;
   size: number;
-  kind: 'spark' | 'ring' | 'diamond' | 'line' | 'orb' | 'flash';
+  kind: 'spark' | 'ring' | 'diamond' | 'line' | 'orb' | 'flash' | 'slash' | 'star' | 'ember';
   rot: number;
   spin: number;
   secondary?: string;
@@ -57,22 +57,79 @@ export class ProceduralVfx {
     const facing = req.facing ?? 1;
     switch (req.kind) {
       case 'hit_light':
-        this.burst(req.x, req.y, req.color, 10 * scale, 2.5, 14);
+        this.burst(req.x, req.y, req.color, 14 * scale, 3.2, 16);
+        this.slash(req.x, req.y, req.color, facing, 0.7);
+        this.flash(req.x, req.y, '#ffffff', 18);
         break;
       case 'hit_heavy':
-        this.burst(req.x, req.y, req.color, 18 * scale, 4.5, 18);
-        this.ring(req.x, req.y, req.color, 3, 22);
+        this.burst(req.x, req.y, req.color, 24 * scale, 5.5, 20);
+        this.burst(req.x, req.y, req.secondary ?? '#fff', 10, 3, 14);
+        this.ring(req.x, req.y, req.color, 4.2, 26);
+        this.slash(req.x, req.y, req.secondary ?? req.color, facing, 1.2);
+        this.flash(req.x, req.y, '#ffffff', 32);
         break;
       case 'hit_ult':
-        this.burst(req.x, req.y, req.color, 28 * scale, 6, 24);
-        this.burst(req.x, req.y, req.secondary ?? '#fbbf24', 16, 5, 20);
-        this.ring(req.x, req.y, req.secondary ?? '#fbbf24', 5, 36);
-        this.ring(req.x, req.y, req.color, 3, 28);
-        this.flash(req.x, req.y, '#ffffff', 40);
+        this.burst(req.x, req.y, req.color, 36 * scale, 7, 28);
+        this.burst(req.x, req.y, req.secondary ?? '#fbbf24', 22, 6, 24);
+        this.ring(req.x, req.y, req.secondary ?? '#fbbf24', 6, 42);
+        this.ring(req.x, req.y, req.color, 4, 34);
+        this.ring(req.x, req.y, '#ffffff', 2.5, 28);
+        this.slash(req.x, req.y, '#fff', facing, 1.6);
+        this.flash(req.x, req.y, '#ffffff', 56);
         break;
       case 'block':
-        this.burst(req.x, req.y, '#93c5fd', 8, 2, 12);
-        this.ring(req.x, req.y, '#bfdbfe', 2.5, 16);
+        this.burst(req.x, req.y, '#93c5fd', 12, 2.5, 14);
+        this.ring(req.x, req.y, '#bfdbfe', 3.2, 18);
+        this.flash(req.x, req.y, '#e0f2fe', 16);
+        break;
+      case 'ink_slash':
+        this.slash(req.x, req.y, req.color, facing, scale);
+        break;
+      case 'impact_ring':
+        this.ring(req.x, req.y, req.color, 5, 24);
+        this.flash(req.x, req.y, req.secondary ?? '#fff', 20);
+        break;
+      case 'ember':
+        for (let i = 0; i < 10; i++) {
+          this.spawnOne({
+            x: req.x + (Math.random() - 0.5) * 20,
+            y: req.y + (Math.random() - 0.5) * 10,
+            vx: (Math.random() - 0.5) * 1.5,
+            vy: -1.5 - Math.random() * 2,
+            life: 20 + Math.random() * 10,
+            maxLife: 28,
+            color: req.color,
+            size: 2 + Math.random() * 3,
+            kind: 'ember',
+            rot: 0,
+            spin: 0.1,
+            secondary: req.secondary,
+          });
+        }
+        break;
+      case 'prism':
+        this.burst(req.x, req.y, req.color, 12, 3, 18);
+        for (let i = 0; i < 6; i++) {
+          const a = (i / 6) * Math.PI * 2 + ageNoise();
+          this.spawnOne({
+            x: req.x,
+            y: req.y,
+            vx: Math.cos(a) * 2.5,
+            vy: Math.sin(a) * 2.5,
+            life: 18,
+            maxLife: 18,
+            color: req.secondary ?? req.color,
+            size: 9,
+            kind: 'star',
+            rot: a,
+            spin: 0.3,
+          });
+        }
+        break;
+      case 'lightning':
+        this.slash(req.x, req.y, req.color, facing, 1.1);
+        this.burst(req.x, req.y, req.secondary ?? '#FFEB3B', 8, 4, 12);
+        this.flash(req.x, req.y, '#fff', 22);
         break;
       case 'muzzle':
         this.burst(req.x, req.y, req.color, 6, 3.5 * facing, 10);
@@ -256,12 +313,41 @@ export class ProceduralVfx {
         ctx.arc(0, 0, p.size * (1.2 - t), 0, Math.PI * 2);
         ctx.stroke();
       } else if (p.kind === 'flash') {
-        ctx.globalAlpha = t * 0.7;
+        ctx.globalAlpha = t * 0.75;
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
+        g.addColorStop(0, '#fff');
+        g.addColorStop(0.4, p.color);
+        g.addColorStop(1, 'transparent');
+        ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(0, 0, p.size * (1.4 - t * 0.5), 0, Math.PI * 2);
+        ctx.arc(0, 0, p.size * (1.5 - t * 0.4), 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.kind === 'slash') {
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 3 + t * 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size * (1.2 - t * 0.3), -0.8, 0.8);
+        ctx.stroke();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else if (p.kind === 'star') {
+        ctx.fillStyle = p.color;
+        starPath(ctx, 0, 0, p.size * t, 5);
+        ctx.fill();
+      } else if (p.kind === 'ember') {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = t * 0.9;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size * t, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = p.secondary ?? '#fbbf24';
+        ctx.globalAlpha = t * 0.5;
+        ctx.beginPath();
+        ctx.arc(0, -p.size, p.size * 0.5 * t, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // orb
         const g = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
         g.addColorStop(0, p.secondary ?? '#fff');
         g.addColorStop(1, p.color);
@@ -273,6 +359,35 @@ export class ProceduralVfx {
       ctx.restore();
     }
     ctx.globalAlpha = 1;
+  }
+
+  private slash(x: number, y: number, color: string, facing: 1 | -1, scale: number): void {
+    this.spawnOne({
+      x,
+      y,
+      vx: facing * 1.5,
+      vy: -0.5,
+      life: 10,
+      maxLife: 10,
+      color,
+      size: 28 * scale,
+      kind: 'slash',
+      rot: facing * -0.4,
+      spin: facing * 0.15,
+    });
+    this.spawnOne({
+      x: x + facing * 6,
+      y: y - 4,
+      vx: facing * 2,
+      vy: 0.2,
+      life: 8,
+      maxLife: 8,
+      color: '#ffffff',
+      size: 18 * scale,
+      kind: 'slash',
+      rot: facing * -0.2,
+      spin: facing * 0.1,
+    });
   }
 
   private burst(
@@ -332,4 +447,27 @@ export class ProceduralVfx {
       this.particles.splice(0, this.particles.length - POOL_CAP);
     }
   }
+}
+
+function ageNoise(): number {
+  return Math.random() * 0.4;
+}
+
+function starPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  r: number,
+  points: number,
+): void {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const rad = (i * Math.PI) / points - Math.PI / 2;
+    const rr = i % 2 === 0 ? r : r * 0.45;
+    const px = x + Math.cos(rad) * rr;
+    const py = y + Math.sin(rad) * rr;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
 }

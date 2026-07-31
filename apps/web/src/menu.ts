@@ -29,12 +29,12 @@ export function mountCharacterMenu(root: HTMLElement): {
 
       <section class="char-section">
         <h2>1 · Your character <span class="hint">(Player 1)</span></h2>
-        <div class="char-grid" id="p1-grid" role="listbox" aria-label="Player 1 character"></div>
+        <div class="char-grid char-grid-4" id="p1-grid" role="listbox" aria-label="Player 1 character"></div>
       </section>
 
       <section class="char-section">
         <h2>2 · Opponent character <span class="hint">(Player 2 / CPU)</span></h2>
-        <div class="char-grid" id="p2-grid" role="listbox" aria-label="Opponent character"></div>
+        <div class="char-grid char-grid-4" id="p2-grid" role="listbox" aria-label="Opponent character"></div>
       </section>
 
       <section class="char-section mode-section">

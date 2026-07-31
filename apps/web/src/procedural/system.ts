@@ -104,14 +104,61 @@ export class ProceduralAssetSystem {
             color,
             secondary: sec,
             facing: atk.facing,
-            scale: kind === 'hit_ult' ? 1.4 : 1,
+            scale: kind === 'hit_ult' ? 1.5 : kind === 'hit_heavy' ? 1.2 : 1,
           },
         });
-        // Impact squash on both bodies (hitstop feel)
+        if (kind !== 'hit_light') {
+          this.pending.push({
+            mode: 'world',
+            req: {
+              kind: 'ink_slash',
+              x: fromFp(def.x),
+              y: fromFp(def.y + 1000),
+              color: sec,
+              facing: atk.facing,
+              scale: kind === 'hit_ult' ? 1.5 : 1,
+            },
+          });
+        }
+        if (atk.id === 'bram_kade') {
+          this.pending.push({
+            mode: 'world',
+            req: {
+              kind: 'ember',
+              x: fromFp(def.x),
+              y: fromFp(def.y + 700),
+              color: '#FF6D00',
+              secondary: '#FFD600',
+            },
+          });
+        } else if (atk.id === 'iria_sol') {
+          this.pending.push({
+            mode: 'world',
+            req: {
+              kind: 'prism',
+              x: fromFp(def.x),
+              y: fromFp(def.y + 900),
+              color: '#E040FB',
+              secondary: '#00BCD4',
+            },
+          });
+        } else if (atk.id === 'kellan_wisp') {
+          this.pending.push({
+            mode: 'world',
+            req: {
+              kind: 'lightning',
+              x: fromFp(def.x),
+              y: fromFp(def.y + 900),
+              color: '#00E5FF',
+              secondary: '#FFEB3B',
+              facing: atk.facing,
+            },
+          });
+        }
         this.getMesh(def).pulseImpact(
-          kind === 'hit_ult' ? 0.55 : kind === 'hit_heavy' ? 0.4 : 0.28,
+          kind === 'hit_ult' ? 0.6 : kind === 'hit_heavy' ? 0.48 : 0.32,
         );
-        this.getMesh(atk).pulseImpact(0.18);
+        this.getMesh(atk).pulseImpact(0.22);
         this.audio.play('hit', {
           intensity: kind === 'hit_ult' ? 1 : kind === 'hit_heavy' ? 0.85 : 0.55,
           pitch: kind === 'hit_light' ? 1.15 : 0.9,

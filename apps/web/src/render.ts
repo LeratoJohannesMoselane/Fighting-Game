@@ -104,41 +104,65 @@ export class ArenaRenderer {
 
   private drawBackground(state: GameState): void {
     const ctx = this.ctx;
+    // SF6-like arena wash — deep ink sky + warm rim
     const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#0b1220');
-    g.addColorStop(0.55, '#121c30');
-    g.addColorStop(1, '#1a1020');
+    g.addColorStop(0, '#0a0618');
+    g.addColorStop(0.35, '#12102a');
+    g.addColorStop(0.7, '#1a1230');
+    g.addColorStop(1, '#2a1830');
     ctx.fillStyle = g;
     ctx.fillRect(-20, -20, W + 40, H + 40);
 
+    // Dramatic key light
+    const spot = ctx.createRadialGradient(W * 0.5, 80, 40, W * 0.5, 200, 520);
+    spot.addColorStop(0, 'rgba(255, 214, 170, 0.18)');
+    spot.addColorStop(0.5, 'rgba(120, 80, 200, 0.08)');
+    spot.addColorStop(1, 'transparent');
+    ctx.fillStyle = spot;
+    ctx.fillRect(0, 0, W, GROUND_SCREEN_Y);
+
+    // Ink speed lines (subtle)
     ctx.save();
-    ctx.globalAlpha = 0.12;
-    ctx.strokeStyle = '#7dd3fc';
+    ctx.globalAlpha = 0.07;
+    ctx.strokeStyle = '#e0e7ff';
     ctx.lineWidth = 1;
-    const scroll = (state.tick % 120) * 0.4;
-    for (let x = -40; x < W + 40; x += 40) {
+    const scroll = (state.tick % 90) * 0.55;
+    for (let i = 0; i < 18; i++) {
+      const y = 40 + i * 28;
       ctx.beginPath();
-      ctx.moveTo(x + scroll, 0);
-      ctx.lineTo(x + scroll * 0.3, H);
-      ctx.stroke();
-    }
-    for (let y = 80; y < GROUND_SCREEN_Y; y += 36) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(W, y);
+      ctx.moveTo(-20 + scroll + i * 12, y);
+      ctx.lineTo(W * 0.35 + scroll, y + 8);
       ctx.stroke();
     }
     ctx.restore();
 
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-    ctx.fillRect(40, 220, 120, 320);
-    ctx.fillRect(200, 280, 80, 260);
-    ctx.fillRect(W - 200, 240, 100, 300);
-    ctx.fillRect(W - 90, 300, 60, 240);
-    ctx.fillStyle = 'rgba(46, 230, 197, 0.08)';
-    ctx.fillRect(70, 250, 20, 40);
-    ctx.fillStyle = 'rgba(255, 77, 109, 0.08)';
-    ctx.fillRect(W - 160, 270, 20, 40);
+    // Silhouette city / forge towers
+    ctx.fillStyle = 'rgba(8, 6, 20, 0.92)';
+    const towers = [
+      [30, 180, 90, 360],
+      [140, 240, 70, 300],
+      [230, 200, 50, 340],
+      [W - 280, 210, 80, 330],
+      [W - 170, 160, 100, 380],
+      [W - 70, 250, 55, 290],
+    ];
+    for (const [x, y, w, h] of towers) {
+      ctx.fillRect(x!, y!, w!, h!);
+    }
+    // Neon windows
+    for (let i = 0; i < 24; i++) {
+      const x = 50 + (i % 8) * 28 + (i > 11 ? W - 340 : 0);
+      const y = 220 + ((i * 17) % 140);
+      ctx.fillStyle = i % 3 === 0 ? 'rgba(0, 229, 255, 0.2)' : 'rgba(224, 64, 251, 0.15)';
+      ctx.fillRect(x, y, 8, 10);
+    }
+
+    // Vignette
+    const vig = ctx.createRadialGradient(W / 2, H * 0.45, H * 0.2, W / 2, H * 0.5, H * 0.75);
+    vig.addColorStop(0, 'transparent');
+    vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, W, H);
   }
 
   private drawArenaFloor(): void {

@@ -114,6 +114,7 @@ export {
   NYRA_VEX,
   BRAM_KADE,
   IRIA_SOL,
+  KELLAN_WISP,
   FIGHTER_KITS,
   getKit,
   getMove,

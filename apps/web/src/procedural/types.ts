@@ -1,28 +1,35 @@
 /**
  * Renderer-agnostic procedural asset contracts.
- * Canvas implements these now; Babylon can implement the same interfaces later
- * without changing CombatCore or move JSON.
+ * SF6-inspired ink-and-paint presentation layer.
  */
 
 export type BoneId =
   | 'root'
   | 'spine'
+  | 'chest'
   | 'neck'
   | 'head'
   | 'l_arm'
   | 'r_arm'
   | 'l_forearm'
   | 'r_forearm'
+  | 'l_hand'
+  | 'r_hand'
   | 'l_leg'
   | 'r_leg'
+  | 'l_shin'
+  | 'r_shin'
+  | 'l_foot'
+  | 'r_foot'
   | 'weapon'
   | 'weapon_l'
-  | 'cape';
+  | 'cape'
+  | 'hair'
+  | 'pauldron';
 
 /** Degrees, local space. */
 export interface BonePose {
   rot: number;
-  /** Optional local offset (presentation units). */
   ox?: number;
   oy?: number;
   scaleX?: number;
@@ -34,42 +41,60 @@ export type PoseMap = Partial<Record<BoneId, BonePose>>;
 export interface AttachPoint {
   id: string;
   bone: BoneId;
-  /** Offset along bone local +X (toward hand/weapon tip). */
   along: number;
-  /** Perpendicular offset. */
   perp: number;
 }
+
+export type PartShape = 'box' | 'capsule' | 'sphere' | 'ellipse' | 'poly' | 'taper' | 'blade';
 
 export interface BodyPartDef {
   id: string;
   bone: BoneId;
-  shape: 'box' | 'capsule' | 'sphere' | 'ellipse' | 'poly';
-  /** Local rect relative to bone origin (presentation units). */
+  shape: PartShape;
   x: number;
   y: number;
   w: number;
   h: number;
+  /** Base fill (ink & paint body). */
   color: string;
+  /** Highlight / cel band. */
   accent?: string;
+  /** Deep shadow band. */
+  shade?: string;
+  /** Rim light color. */
+  rim?: string;
+  /** Outline thickness multiplier. */
+  outline?: number;
   z: number;
-  /** Optional polygon points local to bone (for unique silhouettes). */
   points?: { x: number; y: number }[];
+  /** Soft glow under part (emission). */
+  glow?: string;
+  /** Face feature marker. */
+  face?: 'none' | 'base' | 'eye' | 'brow' | 'mouth' | 'visor';
 }
 
 export interface FighterVisualProfile {
   id: string;
   displayName: string;
-  /** Overall scale of the figure. */
+  title: string;
   height: number;
   width: number;
+  /** SF6 palette */
   primary: string;
   secondary: string;
   accent: string;
-  silhouette: 'slim' | 'stocky' | 'tall_mage' | 'balanced';
+  emission: string;
+  skin: string;
+  outline: string;
+  silhouette: 'slim' | 'stocky' | 'tall_mage' | 'wiry' | 'balanced';
   parts: BodyPartDef[];
   attach: AttachPoint[];
   idleSway: number;
   walkBob: number;
+  /** Exaggeration multiplier for attack poses. */
+  exaggeration: number;
+  /** Personality idle ticks. */
+  personality: 'cocky' | 'stoic' | 'serene' | 'intense';
 }
 
 export type AnimPhase =
@@ -109,7 +134,12 @@ export interface VfxRequest {
     | 'dash_dust'
     | 'afterimage'
     | 'ward'
-    | 'ready_pulse';
+    | 'ready_pulse'
+    | 'ink_slash'
+    | 'impact_ring'
+    | 'ember'
+    | 'prism'
+    | 'lightning';
   x: number;
   y: number;
   color: string;
@@ -135,7 +165,6 @@ export interface SfxKind {
     | 'ready'
     | 'ui_select'
     | 'ui_start';
-  /** 0–1 */
   intensity?: number;
   pitch?: number;
 }

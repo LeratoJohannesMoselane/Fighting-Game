@@ -459,10 +459,65 @@ export const IRIA_SOL: FighterKit = {
   ],
 };
 
+/** Kellan Wisp — Stormblade rushdown (greybox kit). */
+export const KELLAN_WISP: FighterKit = {
+  id: 'kellan_wisp',
+  name: 'Kellan Wisp',
+  version: '1.0.0',
+  base: {
+    hp: 960,
+    walk: 340,
+    jumpVelocity: JUMP_VELOCITY + 20,
+    dashSpeed: 900,
+    weight: 920,
+  },
+  moves: [
+    lightMove('kellan_light', ['kellan_heavy', 'kellan_tempest']),
+    heavyMove('kellan_heavy', ['kellan_tempest']),
+    gunMove('kellan_carbine', {
+      damage: 26,
+      speedX: 1000,
+      startup: 8,
+      recovery: 12,
+      lifetime: 40,
+      kind: 'bullet',
+    }),
+    {
+      ...gunMove('kellan_tether', {
+        damage: 36,
+        speedX: 620,
+        startup: 12,
+        recovery: 16,
+        lifetime: 50,
+        kind: 'orb',
+      }),
+      input: 'ABILITY2',
+    },
+    spellMove('kellan_veil', {
+      damage: 42,
+      startup: 10,
+      active: [10, 14],
+      recovery: 14,
+      hitbox: { x: 300, y: 200, w: 1000, h: 1000 },
+    }),
+    ultimateMove('kellan_tempest', {
+      nameHint: 'Tempest Divide',
+      damage: 275,
+      startup: 7,
+      active: [7, 15],
+      recovery: 24,
+      hitbox: { x: 50, y: 0, w: 1500, h: 1600 },
+      knockbackX: 360,
+      knockbackY: 280,
+    }),
+  ],
+};
+
 export const FIGHTER_KITS: Readonly<Record<string, FighterKit>> = {
   nyra_vex: NYRA_VEX,
   bram_kade: BRAM_KADE,
   iria_sol: IRIA_SOL,
+  kellan_wisp: KELLAN_WISP,
 };
 
 export function getKit(id: string): FighterKit {

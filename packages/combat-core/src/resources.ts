@@ -145,6 +145,26 @@ export const RESOURCE_PROFILES: Readonly<Record<string, FighterResourceProfile>>
       fastSpecialRecharge: true,
     },
   },
+  kellan_wisp: {
+    special: {
+      kind: 'energy',
+      max: 100,
+      start: 40,
+      rechargeAmount: 0,
+      rechargeInterval: 9999,
+      rechargeDelay: 30,
+      display: 'meter',
+      label: 'VOLT',
+    },
+    rangedSpecialCost: 0,
+    spellSpecialCost: 15,
+    ability2SpecialCost: 20,
+    specialGainsOnHit: 6,
+    awakening: {
+      ...DEFAULT_AWAKENING,
+      moveSpeedMul: 120,
+    },
+  },
 };
 
 export function getResourceProfile(fighterId: string): FighterResourceProfile {
