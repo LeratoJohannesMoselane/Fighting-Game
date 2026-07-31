@@ -3,23 +3,41 @@ import {
   BODY_HALF_WIDTH,
   DASH_ACTIVE_FRAMES,
   DASH_RECOVERY_FRAMES,
-  DASH_STAMINA_COST,
   DEFAULT_HITSTOP_FRAMES,
+  FLUX_ON_BLOCK,
   GRAVITY,
   GROUND_FRICTION,
   GROUND_Y,
-  MAX_MAGIC,
   MAX_ROUNDS,
   MAX_STAMINA,
-  MAX_ULTIMATE,
   ROUND_END_FRAMES,
   ROUND_INTRO_FRAMES,
   ROUNDS_TO_WIN,
+  STAMINA_DASH_COST,
+  STAMINA_THRESH_CRITICAL,
+  ULTIMATE_FLUX_COST,
   WALK_ACCEL,
 } from './constants.js';
 import { findMoveByInput, getKit, getMove } from './content/fighters.js';
 import { bufferHas, consumeBufferAction, normalizeActions, pushBuffer } from './input.js';
 import { aabbOverlap, clamp, localBoxToWorld } from './math.js';
+import {
+  damageDealtMultiplier,
+  damageTakenMultiplier,
+  fluxFromDamage,
+  gainFlux,
+  gainSpecialOnHit,
+  getResourceProfile,
+  moveSpeedMultiplier,
+  registerComboHit,
+  specialCostForMove,
+  spendFlux,
+  syncMagicAlias,
+  tickResources,
+  tryActivateAwakening,
+  trySpendSpecial,
+  trySpendStamina,
+} from './resources.js';
 import { cloneState } from './serialize.js';
 import { clampToArena, resetRoundFighters, updateFacing } from './state.js';
 import type {
@@ -85,8 +103,18 @@ export function step(state: GameState, inputs: StepInputs): GameState {
   const i0 = s.fighters[0].inputBuffer[s.fighters[0].inputBuffer.length - 1]!;
   const i1 = s.fighters[1].inputBuffer[s.fighters[1].inputBuffer.length - 1]!;
 
+  // Manual awakening: ULTIMATE + ABILITY2 held together (before attack consume)
+  maybeAwakening(s, s.fighters[0], i0);
+  maybeAwakening(s, s.fighters[1], i1);
+
   tickFighter(s, s.fighters[0], i0, inHitstop);
   tickFighter(s, s.fighters[1], i1, inHitstop);
+
+  // Resource regen / combo / awakening timers (always, even in hitstop)
+  tickResources(s.fighters[0], s, s.fighters[0].guarding);
+  tickResources(s.fighters[1], s, s.fighters[1].guarding);
+  syncMagicAlias(s.fighters[0]);
+  syncMagicAlias(s.fighters[1]);
 
   if (!inHitstop) {
     separateFighters(s);
@@ -94,8 +122,6 @@ export function step(state: GameState, inputs: StepInputs): GameState {
     resolveMeleeHits(s);
     resolveProjectileHits(s);
     updateFacingSafe(s);
-  } else {
-    // Still tick projectile lifetime lightly? Freeze them during hitstop for readability.
   }
 
   // Timer always decrements (match clock is not cosmetic).
@@ -103,6 +129,15 @@ export function step(state: GameState, inputs: StepInputs): GameState {
 
   checkRoundEnd(s);
   return s;
+}
+
+function maybeAwakening(s: GameState, f: FighterState, input: ActionBits): void {
+  if (input.ultimate && input.ability2) {
+    tryActivateAwakening(f, s);
+    // Consume so we don't also fire ult the same frame
+    f.inputBuffer = consumeBufferAction(f.inputBuffer, 'ultimate');
+    f.inputBuffer = consumeBufferAction(f.inputBuffer, 'ability2');
+  }
 }
 
 function pushPhase(s: GameState, to: GameState['matchPhase']): void {
@@ -203,13 +238,13 @@ function tickFighter(s: GameState, f: FighterState, input: ActionBits, inHitstop
 function applyLocomotion(f: FighterState, input: ActionBits): void {
   const kit = getKit(f.id);
   const onGround = f.y <= GROUND_Y && f.vy <= 0;
-  const maxWalk = kit.base.walk;
+  const speedMul = moveSpeedMultiplier(f);
+  const maxWalk = ((kit.base.walk * speedMul) / 100) | 0;
 
   if (onGround) {
     f.jumpUsed = false;
     if (input.down) {
       f.phase = 'crouch';
-      // Hard stop when crouching
       f.vx = approach(f.vx, 0, GROUND_FRICTION * 2);
     } else {
       let target = 0;
@@ -230,7 +265,6 @@ function applyLocomotion(f: FighterState, input: ActionBits): void {
       f.vy = kit.base.jumpVelocity;
       f.jumpUsed = true;
       f.phase = 'jump';
-      // Carry some run speed into jump
       f.vx = ((f.vx * 9) / 10) | 0;
       f.inputBuffer = consumeBufferAction(f.inputBuffer, 'jump');
     }
@@ -263,26 +297,35 @@ function tryStartAction(s: GameState, f: FighterState, input: ActionBits): void 
   // Cancel into another move if currently attacking and cancel window allows — handled in advanceAttack.
   if (f.phase === 'attack') return;
 
-  // Dash (costs stamina)
+  // Dash (costs stamina; denied at critical/empty band effectively via trySpend)
   const dashBuf = bufferHas(f.inputBuffer, 'dash');
   if (dashBuf.hit && onGround && f.phase !== 'hitstun' && f.phase !== 'blockstun') {
-    if (f.stamina >= DASH_STAMINA_COST) {
-      f.stamina = clamp(f.stamina - DASH_STAMINA_COST, 0, MAX_STAMINA);
+    if (f.stamina < STAMINA_THRESH_CRITICAL) {
+      s.events.push({
+        type: 'resource_denied',
+        slot: f.slot,
+        resource: 'stamina',
+        moveId: 'dash',
+        tick: s.tick,
+      });
+      f.inputBuffer = consumeBufferAction(f.inputBuffer, 'dash');
+    } else if (trySpendStamina(f, STAMINA_DASH_COST)) {
       startDash(f, input);
       f.inputBuffer = consumeBufferAction(f.inputBuffer, 'dash');
       return;
+    } else {
+      s.events.push({
+        type: 'resource_denied',
+        slot: f.slot,
+        resource: 'stamina',
+        moveId: 'dash',
+        tick: s.tick,
+      });
+      f.inputBuffer = consumeBufferAction(f.inputBuffer, 'dash');
     }
-    s.events.push({
-      type: 'resource_denied',
-      slot: f.slot,
-      resource: 'stamina',
-      moveId: 'dash',
-      tick: s.tick,
-    });
-    f.inputBuffer = consumeBufferAction(f.inputBuffer, 'dash');
   }
 
-  // Attack intents: ultimate > heavy > light > ranged > spell
+  // Attack intents: ultimate > heavy > light > ranged > spell > ability2
   const tryMove = (key: keyof ActionBits, inputName: string): boolean => {
     const buf = bufferHas(f.inputBuffer, key);
     if (!buf.hit) return false;
@@ -320,36 +363,31 @@ function tryStartAction(s: GameState, f: FighterState, input: ActionBits): void 
 }
 
 /** Returns which resource is missing, or null if affordable. */
-function resourceGate(f: FighterState, move: MoveData): 'stamina' | 'magic' | 'ultimate' | null {
+function resourceGate(
+  f: FighterState,
+  move: MoveData,
+): 'stamina' | 'magic' | 'ultimate' | 'special' | 'flux' | null {
   const stam = move.staminaCost ?? 0;
-  const mag = move.magicCost ?? move.fluxCost ?? 0;
-  const ult = move.ultimateCost ?? (move.isUltimate ? MAX_ULTIMATE : 0);
-  if (ult > 0 && f.ultimate < ult) return 'ultimate';
+  const ult =
+    move.ultimateCost ?? (move.isUltimate || move.input === 'ULTIMATE' ? ULTIMATE_FLUX_COST : 0);
+  const special = specialCostForMove(f, move);
+
+  if (ult > 0 && f.flux < ult) return 'flux';
   if (stam > 0 && f.stamina < stam) return 'stamina';
-  if (mag > 0 && f.magic < mag) return 'magic';
+  if (special > 0 && f.special < special) return 'special';
   return null;
 }
 
 function spendResources(f: FighterState, move: MoveData): void {
   const stam = move.staminaCost ?? 0;
-  const mag = move.magicCost ?? move.fluxCost ?? 0;
-  const ult = move.ultimateCost ?? (move.isUltimate ? MAX_ULTIMATE : 0);
-  if (stam > 0) f.stamina = clamp(f.stamina - stam, 0, MAX_STAMINA);
-  if (mag > 0) f.magic = clamp(f.magic - mag, 0, MAX_MAGIC);
-  if (ult > 0) {
-    f.ultimate = clamp(f.ultimate - ult, 0, MAX_ULTIMATE);
-    f.flux = f.ultimate;
-  }
-}
+  const ult =
+    move.ultimateCost ?? (move.isUltimate || move.input === 'ULTIMATE' ? ULTIMATE_FLUX_COST : 0);
+  const special = specialCostForMove(f, move);
 
-function gainUltimate(f: FighterState, amount: number, s: GameState): void {
-  if (amount <= 0) return;
-  const before = f.ultimate;
-  f.ultimate = clamp(f.ultimate + amount, 0, MAX_ULTIMATE);
-  f.flux = f.ultimate;
-  if (before < MAX_ULTIMATE && f.ultimate >= MAX_ULTIMATE) {
-    s.events.push({ type: 'ultimate_ready', slot: f.slot, tick: s.tick });
-  }
+  if (stam > 0) trySpendStamina(f, stam);
+  if (ult > 0) spendFlux(f, ult);
+  if (special > 0) trySpendSpecial(f, special);
+  syncMagicAlias(f);
 }
 
 function startMove(s: GameState, f: FighterState, move: MoveData): void {
@@ -691,16 +729,32 @@ function applyHitOrBlock(
   defender: FighterState,
   move: MoveData,
 ): void {
-  const blocked = defender.guarding && defender.y === GROUND_Y && defender.phase !== 'hitstun';
+  let blocked = defender.guarding && defender.y === GROUND_Y && defender.phase !== 'hitstun';
+
+  // Guard crush: empty stamina while blocking → cannot block
+  if (blocked && (defender.stamina <= 0 || defender.guardCrushPending)) {
+    blocked = false;
+    defender.guardCrushPending = false;
+    defender.guarding = false;
+    s.events.push({ type: 'guard_crush', slot: defender.slot, tick: s.tick });
+  }
+
+  // Low stamina: longer blockstun
+  let blockStun = move.onBlock.blockStun;
+  if (defender.stamina < STAMINA_THRESH_CRITICAL) {
+    blockStun += 3;
+  }
 
   if (blocked) {
     defender.phase = 'blockstun';
-    defender.stunFrames = move.onBlock.blockStun;
+    defender.stunFrames = blockStun;
     defender.move = null;
     const chip = move.onBlock.chip ?? 0;
     if (chip > 0) {
-      applyDamage(s, defender, chip);
+      applyDamage(s, defender, chip, attacker);
     }
+    // Minimal flux for blocking
+    gainFlux(defender, FLUX_ON_BLOCK, s);
     s.events.push({
       type: 'blocked',
       attacker: attacker.slot,
@@ -714,29 +768,34 @@ function applyHitOrBlock(
     return;
   }
 
-  // Hit
-  applyDamage(s, defender, move.onHit.damage);
+  // --- Hit ---
+  // Combo scaling on attacker
+  let raw = move.onHit.damage;
+  // Awakening damage dealt / taken
+  raw = ((raw * damageDealtMultiplier(attacker)) / 100) | 0;
+  raw = ((raw * damageTakenMultiplier(defender)) / 100) | 0;
+  const scaled = registerComboHit(attacker, raw, move.id, s);
+  applyDamage(s, defender, scaled, attacker);
 
-  // Ultimate meter (anime super gauge) — fluxGain field feeds ultimate.
-  gainUltimate(attacker, move.onHit.fluxGain, s);
-  const defUlt = move.onHit.defenderUltGain ?? Math.max(1, (move.onHit.fluxGain / 2) | 0);
-  gainUltimate(defender, defUlt, s);
+  // Flux from active play (not passive)
+  const dealtFlux = move.onHit.fluxGain || fluxFromDamage(scaled, 'dealt');
+  gainFlux(attacker, dealtFlux, s);
+  const recvFlux = move.onHit.defenderUltGain ?? fluxFromDamage(scaled, 'received');
+  gainFlux(defender, recvFlux, s);
 
-  // Physical combat restores stamina & magic (guns/projectiles restore little/none).
+  // Special resource hooks (Bram heat builds on hit)
+  {
+    const p = getResourceProfile(attacker.id);
+    if (p.specialGainsOnHit) gainSpecialOnHit(attacker, p.specialGainsOnHit);
+  }
+
+  // Melee restores a bit of stamina (encourage pressure)
   const isMelee = move.input === 'LIGHT' || move.input === 'HEAVY' || move.input === 'ULTIMATE';
   if (isMelee) {
-    const stamGain = move.onHit.staminaGain ?? (move.input === 'HEAVY' ? 14 : 10);
-    const magGain = move.onHit.magicGain ?? (move.input === 'HEAVY' ? 12 : 8);
+    const stamGain = move.onHit.staminaGain ?? (move.input === 'HEAVY' ? 8 : 5);
     attacker.stamina = clamp(attacker.stamina + stamGain, 0, MAX_STAMINA);
-    attacker.magic = clamp(attacker.magic + magGain, 0, MAX_MAGIC);
-    // Defender also recovers a trickle for trading (anime resilience).
-    defender.stamina = clamp(defender.stamina + 3, 0, MAX_STAMINA);
-    defender.magic = clamp(defender.magic + 2, 0, MAX_MAGIC);
-  } else if (move.input === 'SPELL') {
-    // Spells give small ult only (already applied); tiny stamina drip on hit.
-    attacker.stamina = clamp(attacker.stamina + (move.onHit.staminaGain ?? 2), 0, MAX_STAMINA);
+    defender.stamina = clamp(defender.stamina + 2, 0, MAX_STAMINA);
   }
-  // Ranged: no stamina/magic restore — must press in with fists.
 
   defender.phase = 'hitstun';
   defender.stunFrames = move.onHit.hitStun;
@@ -752,17 +811,26 @@ function applyHitOrBlock(
     attacker: attacker.slot,
     defender: defender.slot,
     moveId: move.id,
-    damage: move.onHit.damage,
+    damage: scaled,
     tick: s.tick,
   });
 
-  const stop = move.isUltimate ? 12 : DEFAULT_HITSTOP_FRAMES;
+  const stop = move.isUltimate || move.input === 'ULTIMATE' ? 12 : DEFAULT_HITSTOP_FRAMES;
   attacker.hitstop = stop;
   defender.hitstop = stop;
   s.globalHitstop = stop;
+
+  syncMagicAlias(attacker);
+  syncMagicAlias(defender);
 }
 
-function applyDamage(s: GameState, defender: FighterState, amount: number): void {
+function applyDamage(
+  s: GameState,
+  defender: FighterState,
+  amount: number,
+  _attacker?: FighterState,
+): void {
+  void _attacker;
   defender.hp = clamp(defender.hp - amount, 0, defender.hp);
   s.events.push({
     type: 'damage_dealt',

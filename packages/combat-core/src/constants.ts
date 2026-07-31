@@ -53,6 +53,47 @@ export const STAMINA_REGEN_IDLE = 0;
 /** Passive magic regen is zero — must earn via melee. */
 export const MAGIC_REGEN_IDLE = 0;
 
+// --- Full resource system (tick-pure) ---
+
+/** Stamina regen: 2 points/sec → ~33 milli-points per tick at 60 Hz. */
+export const STAMINA_REGEN_PER_TICK_MILLI = 33;
+
+/** Delay after spend before stamina regen starts (1 second). */
+export const STAMINA_REGEN_DELAY_TICKS = 60;
+
+/**
+ * Block drain: 0.5% of bar per frame.
+ * With MAX_STAMINA=100, 0.5 stamina/frame = 500 milli/frame (aggressive greybox).
+ * Tuned to 80 milli/frame ≈ 4.8 stamina/sec so block is costly but not instant crush.
+ */
+export const STAMINA_BLOCK_COST_MILLI = 80;
+
+/** Base dash stamina cost (before band multiplier). */
+export const STAMINA_DASH_COST = 15;
+
+/** Stamina band thresholds. */
+export const STAMINA_THRESH_EFFICIENT = 60;
+export const STAMINA_THRESH_LIMITED = 30;
+export const STAMINA_THRESH_CRITICAL = 10;
+
+/** Combo timer (frames). */
+export const COMBO_RESET_TICKS = 30;
+export const COMBO_EXTEND_TICKS = 10;
+export const COMBO_MAX_TIMER = 90;
+
+/** Awakening: manual only, once per round. */
+export const AWAKENING_HP_PCT = 30;
+export const AWAKENING_FLUX_COST = 50;
+/** 15 seconds @ 60 Hz. */
+export const AWAKENING_DURATION_TICKS = 15 * 60;
+
+/** Flux drips. */
+export const FLUX_ON_BLOCK = 1;
+export const FLUX_ON_COMBO_HIT = 2;
+
+/** Ultimate still costs full flux. */
+export const ULTIMATE_FLUX_COST = 100;
+
 /** Round duration in ticks: 90 seconds × 60 Hz (SRS §2.1). */
 export const ROUND_TICKS = 90 * TICK_RATE;
 

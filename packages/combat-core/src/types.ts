@@ -118,9 +118,11 @@ export interface MoveData {
   projectile?: ProjectileSpawnDef;
   /** Stamina required to start this move (guns/dash). */
   staminaCost?: number;
-  /** Magic required to start this move (guns/spells/ult). */
+  /** Magic required to start this move (guns/spells/ult) — legacy soft gate. */
   magicCost?: number;
-  /** Ultimate meter required (100 = full Awakening). */
+  /** Special resource cost (ammo/charges). */
+  specialCost?: number;
+  /** Flux required (100 = full super). */
   ultimateCost?: number;
   /** @deprecated Prefer magicCost / ultimateCost. */
   fluxCost?: number;
@@ -187,24 +189,44 @@ export interface FighterState {
   id: string;
   slot: 0 | 1;
   hp: number;
+  /** Max HP snapshot at round start (for awakening HP%). */
+  maxHp: number;
   /**
-   * Stamina (0–MAX_STAMINA). Guns & dashes spend it.
-   * Restored primarily by landing physical melee hits.
+   * Stamina (0–MAX_STAMINA). Block, dash, and some mobility spend it.
    */
   stamina: number;
+  /** Fractional stamina drain accumulator (milli-points). */
+  staminaMilli: number;
+  /** Ticks before stamina regen resumes. */
+  staminaRegenDelay: number;
+  /** Next block while stamina empty → guard crush. */
+  guardCrushPending: boolean;
   /**
-   * Magic (0–MAX_MAGIC). Guns, spells, and ultimates spend it.
-   * Restored primarily by landing physical melee hits.
+   * Magic (0–MAX_MAGIC) — HUD alias derived from special resource for legacy bars.
    */
   magic: number;
   /**
-   * Ultimate / Awakening meter (0–MAX_ULTIMATE).
-   * Fills from melee combat; full bar enables super.
-   * Also exposed as `flux` for SRS naming compatibility.
+   * Flux meter (0–100). Builds from active play; spends on ultimate (100) or awakening (50).
+   * Alias: `ultimate` kept in sync for older call sites.
    */
-  ultimate: number;
-  /** @deprecated Alias of `ultimate` — prefer ultimate. */
   flux: number;
+  /** @deprecated Prefer `flux` — kept in sync. */
+  ultimate: number;
+  /**
+   * Character special resource (ammo / heat / prism charges / energy).
+   */
+  special: number;
+  specialMax: number;
+  specialRegenDelay: number;
+  specialRegenTimer: number;
+  /** Combo system */
+  comboCount: number;
+  comboTimer: number;
+  comboMoves: string[];
+  /** Awakening comeback mode */
+  awakened: boolean;
+  awakeningTimer: number;
+  awakeningUsedThisRound: boolean;
   /** Fixed-point position. */
   x: number;
   y: number;
@@ -276,10 +298,23 @@ export type GameEvent =
   | {
       type: 'resource_denied';
       slot: 0 | 1;
-      resource: 'stamina' | 'magic' | 'ultimate';
+      resource: 'stamina' | 'magic' | 'ultimate' | 'special' | 'flux';
       moveId: string;
       tick: number;
     }
+  | { type: 'awakening_activated'; slot: 0 | 1; duration: number; tick: number }
+  | { type: 'awakening_deactivated'; slot: 0 | 1; tick: number }
+  | {
+      type: 'combo_update';
+      slot: 0 | 1;
+      count: number;
+      damage: number;
+      scaling: number;
+      callout: string;
+      tick: number;
+    }
+  | { type: 'combo_ended'; slot: 0 | 1; count: number; tick: number }
+  | { type: 'guard_crush'; slot: 0 | 1; tick: number }
   | { type: 'round_end'; round: number; winner: 0 | 1 | 'draw'; tick: number }
   | { type: 'match_end'; winner: 0 | 1 | 'draw'; tick: number }
   | { type: 'phase_change'; from: MatchPhase; to: MatchPhase; tick: number };

@@ -26,7 +26,7 @@ const P2_MAP: Record<string, keyof ActionBits> = {
   KeyK: 'heavy',
   KeyL: 'ranged',
   KeyU: 'ability1',
-  KeyI: 'ability2', // bomb / snake
+  KeyI: 'ability2', // bomb / snake / awaken with O
   KeyO: 'ultimate',
   Slash: 'guard',
   Period: 'dash',

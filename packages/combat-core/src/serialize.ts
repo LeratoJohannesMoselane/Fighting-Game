@@ -2,12 +2,6 @@ import type { ActionBits, FighterState, GameState, ProjectileState } from './typ
 
 /**
  * Canonical JSON serialisation with fixed key order (ADR-0002).
- * Used by getStateHash, snapshots, and determinism tests.
- *
- * Clone strategy: structured deep copy via JSON parse/stringify of the
- * canonical form — slow but guarantees plain-JSON fidelity and stable key order.
- * For hot rollback paths a later milestone may switch to a hand-rolled pool;
- * the public contract remains "plain JSON round-trip equals original".
  */
 
 function cmpNum(a: number, b: number): number {
@@ -39,14 +33,20 @@ function fighterToCanonical(f: FighterState): Record<string, unknown> {
     const k = cooldownKeys[i]!;
     cooldowns[k] = f.cooldowns[k] ?? 0;
   }
-  // Keep ultimate/flux in sync for legacy snapshots.
-  const ultimate = f.ultimate ?? f.flux ?? 0;
+  const flux = f.flux ?? f.ultimate ?? 0;
   return {
+    awakened: !!f.awakened,
+    awakeningTimer: f.awakeningTimer ?? 0,
+    awakeningUsedThisRound: !!f.awakeningUsedThisRound,
+    comboCount: f.comboCount ?? 0,
+    comboMoves: (f.comboMoves ?? []).slice(),
+    comboTimer: f.comboTimer ?? 0,
     cooldowns,
     dashRecovering: f.dashRecovering,
     dashTimer: f.dashTimer,
     facing: f.facing,
-    flux: ultimate,
+    flux,
+    guardCrushPending: !!f.guardCrushPending,
     guarding: f.guarding,
     hitstop: f.hitstop,
     hp: f.hp,
@@ -56,6 +56,7 @@ function fighterToCanonical(f: FighterState): Record<string, unknown> {
     jumpUsed: f.jumpUsed,
     knockdownTimer: f.knockdownTimer,
     magic: f.magic ?? 0,
+    maxHp: f.maxHp ?? f.hp,
     move: f.move
       ? {
           hasHit: f.move.hasHit,
@@ -67,9 +68,15 @@ function fighterToCanonical(f: FighterState): Record<string, unknown> {
       : null,
     phase: f.phase,
     slot: f.slot,
+    special: f.special ?? 0,
+    specialMax: f.specialMax ?? 0,
+    specialRegenDelay: f.specialRegenDelay ?? 0,
+    specialRegenTimer: f.specialRegenTimer ?? 0,
     stamina: f.stamina ?? 0,
+    staminaMilli: f.staminaMilli ?? 0,
+    staminaRegenDelay: f.staminaRegenDelay ?? 0,
     stunFrames: f.stunFrames,
-    ultimate,
+    ultimate: flux,
     vx: f.vx,
     vy: f.vy,
     wins: f.wins,
@@ -102,14 +109,12 @@ function projectileToCanonical(p: ProjectileState): Record<string, unknown> {
   };
 }
 
-/** Canonical plain object (sorted keys at every level we control). */
 export function toCanonical(state: GameState): Record<string, unknown> {
   const projectiles = state.projectiles
     .slice()
     .sort((a, b) => cmpNum(a.id, b.id))
     .map(projectileToCanonical);
 
-  // Events are append-only in tick order; serialise as-is but with stable field order per event.
   const events = state.events.map((e) => sortKeysDeep(e as unknown as Record<string, unknown>));
 
   return {
@@ -151,30 +156,37 @@ function sortKeysDeep(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-/** Deterministic JSON string (canonical key order). */
 export function serializeState(state: GameState): string {
   return JSON.stringify(toCanonical(state));
 }
 
-/** Restore state from a serializeState payload. */
 export function deserializeState(json: string): GameState {
   const raw = JSON.parse(json) as GameState;
   return cloneState(raw);
 }
 
 function syncFighterResources(f: FighterState): void {
-  // Prefer ultimate; fall back to flux for older snapshots.
-  const u = f.ultimate ?? f.flux ?? 0;
-  f.ultimate = u;
-  f.flux = u;
+  const flux = f.flux ?? f.ultimate ?? 0;
+  f.flux = flux;
+  f.ultimate = flux;
   if (typeof f.stamina !== 'number') f.stamina = 100;
+  if (typeof f.staminaMilli !== 'number') f.staminaMilli = 0;
+  if (typeof f.staminaRegenDelay !== 'number') f.staminaRegenDelay = 0;
+  if (typeof f.guardCrushPending !== 'boolean') f.guardCrushPending = false;
   if (typeof f.magic !== 'number') f.magic = 100;
+  if (typeof f.special !== 'number') f.special = 0;
+  if (typeof f.specialMax !== 'number') f.specialMax = 0;
+  if (typeof f.specialRegenDelay !== 'number') f.specialRegenDelay = 0;
+  if (typeof f.specialRegenTimer !== 'number') f.specialRegenTimer = 0;
+  if (typeof f.comboCount !== 'number') f.comboCount = 0;
+  if (typeof f.comboTimer !== 'number') f.comboTimer = 0;
+  if (!Array.isArray(f.comboMoves)) f.comboMoves = [];
+  if (typeof f.awakened !== 'boolean') f.awakened = false;
+  if (typeof f.awakeningTimer !== 'number') f.awakeningTimer = 0;
+  if (typeof f.awakeningUsedThisRound !== 'boolean') f.awakeningUsedThisRound = false;
+  if (typeof f.maxHp !== 'number' || f.maxHp <= 0) f.maxHp = Math.max(f.hp, 1);
 }
 
-/**
- * Deep clone via canonical JSON round-trip.
- * Guarantees: no shared references; plain JSON types only; stable for hashing.
- */
 export function cloneState(state: GameState): GameState {
   const next = JSON.parse(serializeState(state)) as GameState;
   syncFighterResources(next.fighters[0]);
@@ -182,16 +194,11 @@ export function cloneState(state: GameState): GameState {
   return next;
 }
 
-/**
- * FNV-1a 32-bit hash over the canonical serialisation (ADR-0002).
- * Returns an unsigned 32-bit integer.
- */
 export function getStateHash(state: GameState): number {
   const s = serializeState(state);
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) {
     h ^= s.charCodeAt(i);
-    // h *= 16777619 (FNV prime) with 32-bit overflow
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;

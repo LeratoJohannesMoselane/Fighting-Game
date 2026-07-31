@@ -133,7 +133,7 @@ export class ProceduralAssetSystem {
         const kit = getKit(f.id);
         const move = getMove(kit, e.moveId);
         this.playAttackStartSfx(move);
-      } else if (e.type === 'ultimate_activated') {
+      } else if (e.type === 'ultimate_activated' || e.type === 'awakening_activated') {
         const f = state.fighters[e.slot];
         this.pending.push({
           mode: 'world',

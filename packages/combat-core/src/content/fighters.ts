@@ -7,13 +7,10 @@
 import type { FighterKit, MoveData } from '../types.js';
 import {
   DEFAULT_HURTBOX,
-  GUN_MAGIC_COST,
   GUN_STAMINA_COST,
   JUMP_VELOCITY,
   MAX_ULTIMATE,
-  SPELL_MAGIC_COST,
   SPELL_STAMINA_COST,
-  ULTIMATE_MAGIC_COST,
 } from '../constants.js';
 
 const HURT = { ...DEFAULT_HURTBOX };
@@ -91,9 +88,9 @@ function gunMove(
     recovery: opts.recovery,
     hitboxes: [],
     hurtbox: HURT,
-    // Guns spend stamina + magic; restore almost nothing (must melee to refill).
+    // Guns spend stamina; special ammo/charges handled by ResourceManager.
     staminaCost: GUN_STAMINA_COST,
-    magicCost: GUN_MAGIC_COST,
+    magicCost: 0,
     onHit: { damage: opts.damage, hitStun: 10, fluxGain: 2, staminaGain: 0, magicGain: 0 },
     onBlock: { blockStun: 6, advantage: -4 },
     cancelTo: [],
@@ -144,7 +141,7 @@ function spellMove(
     ],
     hurtbox: HURT,
     staminaCost: SPELL_STAMINA_COST,
-    magicCost: SPELL_MAGIC_COST,
+    magicCost: 0,
     onHit: {
       damage: opts.damage,
       hitStun: 18,
@@ -196,7 +193,7 @@ function ultimateMove(
     hurtbox: HURT,
     isUltimate: true,
     ultimateCost: MAX_ULTIMATE,
-    magicCost: ULTIMATE_MAGIC_COST,
+    magicCost: 0,
     staminaCost: 10,
     onHit: {
       damage: opts.damage,

@@ -3,13 +3,12 @@ import {
   DEFAULT_HURTBOX,
   INPUT_BUFFER_FRAMES,
   MAX_HP,
-  MAX_MAGIC,
-  MAX_STAMINA,
   ROUND_INTRO_FRAMES,
   ROUND_TICKS,
 } from './constants.js';
 import { getKit } from './content/fighters.js';
 import { emptyActions } from './input.js';
+import { initFighterResources } from './resources.js';
 import type { CreateInitialStateOptions, FighterState, GameState } from './types.js';
 
 function makeFighter(id: string, slot: 0 | 1, startX: number): FighterState {
@@ -18,14 +17,29 @@ function makeFighter(id: string, slot: 0 | 1, startX: number): FighterState {
   for (let i = 0; i < INPUT_BUFFER_FRAMES; i++) {
     buffer.push(emptyActions());
   }
-  return {
+  const hp = kit.base.hp > 0 ? kit.base.hp : MAX_HP;
+  const f: FighterState = {
     id,
     slot,
-    hp: kit.base.hp > 0 ? kit.base.hp : MAX_HP,
-    stamina: MAX_STAMINA,
-    magic: MAX_MAGIC,
-    ultimate: 0,
+    hp,
+    maxHp: hp,
+    stamina: 100,
+    staminaMilli: 0,
+    staminaRegenDelay: 0,
+    guardCrushPending: false,
+    magic: 100,
     flux: 0,
+    ultimate: 0,
+    special: 0,
+    specialMax: 0,
+    specialRegenDelay: 0,
+    specialRegenTimer: 0,
+    comboCount: 0,
+    comboTimer: 0,
+    comboMoves: [],
+    awakened: false,
+    awakeningTimer: 0,
+    awakeningUsedThisRound: false,
     x: startX,
     y: 0,
     vx: 0,
@@ -45,12 +59,13 @@ function makeFighter(id: string, slot: 0 | 1, startX: number): FighterState {
     guarding: false,
     jumpUsed: false,
   };
+  initFighterResources(f);
+  return f;
 }
 
 /**
  * Create a fresh match state.
  * Defaults: P1 = Nyra Vex (left), P2 = Bram Kade (right).
- * Override with `p1Id` / `p2Id` (must exist in FIGHTER_KITS).
  */
 export function createInitialState(options: CreateInitialStateOptions): GameState {
   const seed = options.seed | 0;
@@ -59,7 +74,6 @@ export function createInitialState(options: CreateInitialStateOptions): GameStat
 
   const p1Id = options.p1Id ?? 'nyra_vex';
   const p2Id = options.p2Id ?? 'bram_kade';
-  // Validate kits early (throws if unknown).
   getKit(p1Id);
   getKit(p2Id);
 
@@ -83,12 +97,11 @@ export function createInitialState(options: CreateInitialStateOptions): GameStat
     globalHitstop: 0,
   };
 
-  // Face each other
   updateFacing(state);
   return state;
 }
 
-/** Reset fighters for a new round (keeps wins). */
+/** Reset fighters for a new round (keeps wins + flux carry). */
 export function resetRoundFighters(state: GameState): void {
   const p1 = state.fighters[0];
   const p2 = state.fighters[1];
@@ -103,11 +116,16 @@ export function resetRoundFighters(state: GameState): void {
 }
 
 function resetFighterForRound(f: FighterState, x: number, hp: number, facing: 1 | -1): void {
+  const carriedFlux = f.flux | 0;
   f.hp = hp;
-  f.stamina = MAX_STAMINA;
-  f.magic = MAX_MAGIC;
-  // Ultimate carries between rounds within a match (anime comeback tension).
-  f.flux = f.ultimate;
+  f.maxHp = hp;
+  initFighterResources(f);
+  // Flux carries between rounds (comeback tension); awakening does not.
+  f.flux = carriedFlux;
+  f.ultimate = carriedFlux;
+  f.awakened = false;
+  f.awakeningTimer = 0;
+  f.awakeningUsedThisRound = false;
   f.x = x;
   f.y = 0;
   f.vx = 0;
@@ -141,7 +159,6 @@ export function updateFacing(state: GameState): void {
     a.facing = -1;
     b.facing = 1;
   }
-  // equal x: keep previous facing
 }
 
 export function clampToArena(f: FighterState): void {

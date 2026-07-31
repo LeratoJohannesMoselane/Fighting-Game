@@ -19,6 +19,22 @@ export {
   SPELL_STAMINA_COST,
   DASH_STAMINA_COST,
   ULTIMATE_MAGIC_COST,
+  STAMINA_REGEN_PER_TICK_MILLI,
+  STAMINA_REGEN_DELAY_TICKS,
+  STAMINA_BLOCK_COST_MILLI,
+  STAMINA_DASH_COST,
+  STAMINA_THRESH_EFFICIENT,
+  STAMINA_THRESH_LIMITED,
+  STAMINA_THRESH_CRITICAL,
+  COMBO_RESET_TICKS,
+  COMBO_EXTEND_TICKS,
+  COMBO_MAX_TIMER,
+  AWAKENING_HP_PCT,
+  AWAKENING_FLUX_COST,
+  AWAKENING_DURATION_TICKS,
+  FLUX_ON_BLOCK,
+  FLUX_ON_COMBO_HIT,
+  ULTIMATE_FLUX_COST,
   ROUND_TICKS,
   ROUNDS_TO_WIN,
   MAX_ROUNDS,
@@ -43,6 +59,22 @@ export {
   LCG_MOD,
   LCG_MUL,
 } from './constants.js';
+
+export {
+  getResourceProfile,
+  RESOURCE_PROFILES,
+  staminaBand,
+  comboCallout,
+  comboScalingMul,
+  tryActivateAwakening,
+  fluxFromDamage,
+} from './resources.js';
+export type {
+  StaminaBand,
+  SpecialKind,
+  SpecialResourceConfig,
+  FighterResourceProfile,
+} from './resources.js';
 
 export type {
   ActionBits,

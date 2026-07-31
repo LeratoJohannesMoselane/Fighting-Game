@@ -133,11 +133,13 @@ function handleEvents(events: GameEvent[], s: GameState): void {
       hud.flashHit();
     } else if (e.type === 'blocked') {
       shake = Math.min(1, shake + 0.25);
-    } else if (e.type === 'ultimate_activated') {
+    } else if (e.type === 'ultimate_activated' || e.type === 'awakening_activated') {
       shake = 1;
       hud.flashUltimate();
     } else if (e.type === 'ultimate_ready') {
       shake = Math.min(1, shake + 0.4);
+    } else if (e.type === 'guard_crush') {
+      shake = Math.min(1, shake + 0.55);
     } else if (e.type === 'death' || e.type === 'round_end') {
       shake = 1;
     }

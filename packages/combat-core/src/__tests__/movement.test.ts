@@ -124,7 +124,9 @@ describe('initial state', () => {
     expect(s.fighters[0].hp).toBe(920);
     expect(s.fighters[1].hp).toBe(1000);
     expect(s.fighters[0].stamina).toBe(100);
-    expect(s.fighters[0].magic).toBe(100);
+    // Iria starts with 2/3 prism charges → magic alias ~66
+    expect(s.fighters[0].special).toBe(2);
+    expect(s.fighters[0].flux).toBe(0);
   });
 
   it('reaches fighting after intro frames', () => {
