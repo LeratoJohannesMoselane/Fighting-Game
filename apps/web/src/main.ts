@@ -69,7 +69,7 @@ function applyRosterLabels(cfg: MatchConfig): void {
     p2Hint.textContent =
       cfg.opponentMode === 'cpu'
         ? 'AI controlled — no keyboard needed for P2'
-        : '← → move · ↑ jump · J/K light/heavy · L gun · U spell · O Awakening · / guard · . dash';
+        : '← → move · ↑ jump · J/K · L gun · U spell · I bomb/snake · O ult · / guard · . dash';
   }
 
   // Tint name colors from roster

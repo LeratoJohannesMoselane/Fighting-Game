@@ -203,8 +203,10 @@ export class CpuController {
       actions.light = true;
     } else if (r < 0.45 * t.aggression + 0.48) {
       actions.heavy = true;
-    } else if (!lowGas && r < 0.45 * t.aggression + 0.6) {
+    } else if (!lowGas && r < 0.45 * t.aggression + 0.55) {
       actions.ability1 = true;
+    } else if (!lowGas && r < 0.45 * t.aggression + 0.65) {
+      actions.ability2 = true; // bomb / snake
     } else if (!lowGas && r < 0.85) {
       actions.dash = true;
       if (this.next() < 0.35) this.faceToward(actions, towardRight);

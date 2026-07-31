@@ -132,6 +132,8 @@ export interface MoveData {
   forwardImpulse?: number;
 }
 
+export type ProjectileKind = 'bullet' | 'bomb' | 'snake' | 'orb';
+
 export interface ProjectileSpawnDef {
   /** Local move frame when the projectile is spawned. */
   frame: number;
@@ -147,6 +149,12 @@ export interface ProjectileSpawnDef {
   height: number;
   /** Max simultaneous instances of this projectile id from one fighter. */
   maxActive?: number;
+  /** Visual / behavior archetype for presentation. */
+  kind?: ProjectileKind;
+  /** Gravity applied per tick (fp) — bombs arc. */
+  gravity?: number;
+  /** Bounce factor 0–1 when hitting ground. */
+  bounce?: number;
 }
 
 export interface FighterKit {
@@ -247,6 +255,11 @@ export interface ProjectileState {
   lifetime: number;
   /** Facing at spawn, for knockback direction. */
   facing: 1 | -1;
+  kind: ProjectileKind;
+  gravity: number;
+  bounce: number;
+  /** Age in ticks since spawn (for animation). */
+  age: number;
 }
 
 export type GameEvent =

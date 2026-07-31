@@ -39,6 +39,8 @@ function actionForMove(move: MoveData): Partial<ActionBits> {
       return { ranged: true };
     case 'SPELL':
       return { ability1: true };
+    case 'ABILITY2':
+      return { ability2: true };
     case 'ULTIMATE':
       return { ultimate: true };
     default:

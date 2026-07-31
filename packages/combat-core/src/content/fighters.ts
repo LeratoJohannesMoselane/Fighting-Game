@@ -74,8 +74,15 @@ function gunMove(
     startup: number;
     recovery: number;
     lifetime: number;
+    kind?: 'bullet' | 'bomb' | 'snake' | 'orb';
+    speedY?: number;
+    gravity?: number;
+    bounce?: number;
+    width?: number;
+    height?: number;
   },
 ): MoveData {
+  const kind = opts.kind ?? 'bullet';
   return {
     id,
     input: 'RANGED',
@@ -93,15 +100,18 @@ function gunMove(
     projectile: {
       frame: opts.startup,
       speedX: opts.speedX,
-      speedY: 0,
+      speedY: opts.speedY ?? (kind === 'bomb' ? 220 : 0),
       lifetime: opts.lifetime,
       damage: opts.damage,
-      hitStun: 10,
+      hitStun: kind === 'snake' ? 14 : 10,
       blockStun: 6,
       fluxGain: 2,
-      width: 200,
-      height: 120,
-      maxActive: 2,
+      width: opts.width ?? (kind === 'bomb' ? 280 : kind === 'snake' ? 320 : 200),
+      height: opts.height ?? (kind === 'bomb' ? 280 : kind === 'snake' ? 160 : 120),
+      maxActive: kind === 'snake' ? 1 : 2,
+      kind,
+      gravity: opts.gravity ?? (kind === 'bomb' ? 28 : 0),
+      bounce: opts.bounce ?? (kind === 'bomb' ? 0.4 : 0),
     },
   };
 }
@@ -211,21 +221,38 @@ export const NYRA_VEX: FighterKit = {
   version: '0.1.0',
   base: {
     hp: 1000,
-    walk: 286,
+    walk: 320,
     jumpVelocity: JUMP_VELOCITY,
-    dashSpeed: 750,
+    dashSpeed: 820,
     weight: 1000,
   },
   moves: [
     lightMove('nyra_light', ['nyra_heavy', 'nyra_event_horizon']),
     heavyMove('nyra_heavy', ['nyra_event_horizon']),
+    // Twin arc pistols — fast bullets
     gunMove('nyra_gun', {
       damage: 28,
-      speedX: 900,
-      startup: 10,
-      recovery: 14,
-      lifetime: 45,
+      speedX: 980,
+      startup: 9,
+      recovery: 13,
+      lifetime: 42,
+      kind: 'bullet',
     }),
+    // Ricochet bomb — arcing grenade (ABILITY2)
+    {
+      ...gunMove('nyra_bomb', {
+        damage: 48,
+        speedX: 420,
+        speedY: 380,
+        startup: 14,
+        recovery: 18,
+        lifetime: 70,
+        kind: 'bomb',
+        gravity: 26,
+        bounce: 0.5,
+      }),
+      input: 'ABILITY2',
+    },
     spellMove('nyra_spell', {
       damage: 45,
       startup: 14,
@@ -254,21 +281,38 @@ export const BRAM_KADE: FighterKit = {
   version: '0.1.0',
   base: {
     hp: 1000,
-    walk: 220,
+    walk: 250,
     jumpVelocity: JUMP_VELOCITY - 40,
-    dashSpeed: 620,
+    dashSpeed: 700,
     weight: 1200,
   },
   moves: [
     lightMove('bram_light', ['bram_heavy', 'bram_last_foundry']),
     heavyMove('bram_heavy', ['bram_last_foundry']),
+    // Scattergun blast pellet
     gunMove('bram_gun', {
       damage: 35,
-      speedX: 700,
-      startup: 12,
-      recovery: 16,
-      lifetime: 36,
+      speedX: 760,
+      startup: 11,
+      recovery: 15,
+      lifetime: 34,
+      kind: 'bullet',
     }),
+    // Forge bomb — heavy arcing shell (ABILITY2)
+    {
+      ...gunMove('bram_bomb', {
+        damage: 58,
+        speedX: 360,
+        speedY: 420,
+        startup: 16,
+        recovery: 20,
+        lifetime: 75,
+        kind: 'bomb',
+        gravity: 30,
+        bounce: 0.35,
+      }),
+      input: 'ABILITY2',
+    },
     {
       ...spellMove('bram_spell', {
         damage: 55,
@@ -307,9 +351,9 @@ export const IRIA_SOL: FighterKit = {
   version: '1.0.0',
   base: {
     hp: 920,
-    walk: 245,
-    jumpVelocity: 740,
-    dashSpeed: 620,
+    walk: 280,
+    jumpVelocity: 760,
+    dashSpeed: 720,
     weight: 900,
   },
   moves: [
@@ -376,13 +420,27 @@ export const IRIA_SOL: FighterKit = {
       onBlock: { blockStun: 14, advantage: -8, chip: 3 },
       cancelTo: ['iria_sevenfold'],
     },
+    // Prism bolt
     gunMove('iria_bolt', {
       damage: 30,
-      speedX: 780,
+      speedX: 820,
       startup: 11,
-      recovery: 16,
-      lifetime: 48,
+      recovery: 15,
+      lifetime: 46,
+      kind: 'bullet',
     }),
+    // Arcane serpent — ground snake projectile (ABILITY2)
+    {
+      ...gunMove('iria_snake', {
+        damage: 40,
+        speedX: 480,
+        startup: 14,
+        recovery: 18,
+        lifetime: 90,
+        kind: 'snake',
+      }),
+      input: 'ABILITY2',
+    },
     spellMove('iria_spell', {
       damage: 38,
       startup: 10,

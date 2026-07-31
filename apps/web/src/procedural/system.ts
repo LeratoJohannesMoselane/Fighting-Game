@@ -107,6 +107,11 @@ export class ProceduralAssetSystem {
             scale: kind === 'hit_ult' ? 1.4 : 1,
           },
         });
+        // Impact squash on both bodies (hitstop feel)
+        this.getMesh(def).pulseImpact(
+          kind === 'hit_ult' ? 0.55 : kind === 'hit_heavy' ? 0.4 : 0.28,
+        );
+        this.getMesh(atk).pulseImpact(0.18);
         this.audio.play('hit', {
           intensity: kind === 'hit_ult' ? 1 : kind === 'hit_heavy' ? 0.85 : 0.55,
           pitch: kind === 'hit_light' ? 1.15 : 0.9,
@@ -282,41 +287,42 @@ export class ProceduralAssetSystem {
       });
     }
 
-    // Draw fighters (procedural meshes)
+    // Hitstop freezes pose advancement (real fighter feel)
+    const frozen = state.globalHitstop > 0;
+
+    // Draw fighters (procedural meshes) — feet on ground line
     for (const f of state.fighters) {
       const mesh = this.getMesh(f);
-      const anim = mesh.update(f, presentTick);
+      const anim = mesh.update(f, presentTick, frozen || f.hitstop > 0);
       const feet = worldToScreen(fromFp(f.x), fromFp(f.y));
       const flash =
         f.phase === 'hitstun'
-          ? 'rgba(255,255,255,0.9)'
+          ? 'rgba(255,255,255,0.92)'
           : f.phase === 'blockstun'
             ? '#93c5fd'
-            : undefined;
-      const activeGlow = anim.attackPhase === 'active';
+            : f.hitstop > 0
+              ? 'rgba(255,240,200,0.5)'
+              : undefined;
+      const activeGlow = anim.attackPhase === 'active' && !frozen;
       mesh.draw(ctx, feet.x, feet.y, {
         facing: f.facing,
         flash,
         activeGlow,
       });
 
-      // Name plate
+      // Name plate above head
+      const headY = feet.y - 100 * mesh.profile.height;
       ctx.fillStyle = 'rgba(15,23,42,0.75)';
-      ctx.fillRect(feet.x - 36, feet.y - 118 * mesh.profile.height, 72, 16);
+      ctx.fillRect(feet.x - 36, headY - 18, 72, 16);
       ctx.fillStyle = mesh.profile.primary;
       ctx.font = 'bold 11px ui-sans-serif, system-ui, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(f.slot === 0 ? 'P1' : 'P2', feet.x, feet.y - 106 * mesh.profile.height);
+      ctx.fillText(f.slot === 0 ? 'P1' : 'P2', feet.x, headY - 6);
 
-      // Attack phase label (debug-ish juice)
       if (anim.attackPhase) {
         ctx.fillStyle = anim.attackPhase === 'active' ? '#fbbf24' : '#94a3b8';
         ctx.font = '10px ui-monospace, monospace';
-        ctx.fillText(
-          `${anim.label}·${anim.attackPhase}`,
-          feet.x,
-          feet.y - 122 * mesh.profile.height,
-        );
+        ctx.fillText(`${anim.label}·${anim.attackPhase}`, feet.x, headY - 22);
       }
 
       if (showHitboxes) {

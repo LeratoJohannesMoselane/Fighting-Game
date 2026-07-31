@@ -1,6 +1,6 @@
 /**
- * Procedural fighter "mesh" — bone hierarchy + part draw list.
- * Canvas draws primitives; a Babylon adapter can map bones → TransformNodes.
+ * Procedural fighter mesh — feet planted on the ground plane.
+ * Bone +Y is screen-down; feet at origin, body builds UP (negative Y).
  */
 
 import type { FighterState } from '@aether-break/combat-core';
@@ -17,21 +17,28 @@ export interface BoneWorld {
   scaleY: number;
 }
 
-/** Local bind offsets (parent → child) in presentation units. */
+/**
+ * Bind pose (local parent → child).
+ * Origin = midpoint between feet on the floor.
+ * Negative Y = up toward head.
+ */
 const BIND: Record<BoneId, { parent: BoneId | null; x: number; y: number }> = {
   root: { parent: null, x: 0, y: 0 },
-  spine: { parent: 'root', x: 0, y: -8 },
-  neck: { parent: 'spine', x: 0, y: -40 },
-  head: { parent: 'neck', x: 0, y: -6 },
-  l_arm: { parent: 'spine', x: -14, y: -32 },
-  l_forearm: { parent: 'l_arm', x: 0, y: 20 },
-  r_arm: { parent: 'spine', x: 14, y: -32 },
-  r_forearm: { parent: 'r_arm', x: 0, y: 20 },
-  l_leg: { parent: 'root', x: -8, y: 2 },
-  r_leg: { parent: 'root', x: 8, y: 2 },
-  weapon: { parent: 'r_forearm', x: 0, y: 18 },
-  weapon_l: { parent: 'l_forearm', x: 0, y: 18 },
-  cape: { parent: 'spine', x: -6, y: -28 },
+  // Hips sit above the floor
+  spine: { parent: 'root', x: 0, y: -52 },
+  neck: { parent: 'spine', x: 0, y: -38 },
+  head: { parent: 'neck', x: 0, y: -8 },
+  // Legs: hip → knee direction is +Y (down toward floor)
+  l_leg: { parent: 'root', x: -9, y: -52 },
+  r_leg: { parent: 'root', x: 9, y: -52 },
+  // Arms from shoulders
+  l_arm: { parent: 'spine', x: -15, y: -30 },
+  l_forearm: { parent: 'l_arm', x: 0, y: 22 },
+  r_arm: { parent: 'spine', x: 15, y: -30 },
+  r_forearm: { parent: 'r_arm', x: 0, y: 22 },
+  weapon: { parent: 'r_forearm', x: 0, y: 20 },
+  weapon_l: { parent: 'l_forearm', x: 0, y: 20 },
+  cape: { parent: 'spine', x: -4, y: -26 },
 };
 
 const BONE_ORDER: BoneId[] = [
@@ -55,26 +62,36 @@ export class ProceduralFighterMesh {
   readonly fighterId: string;
   anim: ResolvedAnim | null = null;
   bones: Partial<Record<BoneId, BoneWorld>> = {};
-  /** Screen-space feet position last draw. */
   screenX = 0;
   screenY = 0;
   facing: 1 | -1 = 1;
+  /** 0–1 squash on impact */
+  impactSquash = 0;
 
   constructor(fighterId: string) {
     this.fighterId = fighterId;
     this.profile = getVisualProfile(fighterId);
   }
 
-  /** Rebuild profile colors/silhouette (hot-reload friendly). */
   static generate(fighterId: string): ProceduralFighterMesh {
     return new ProceduralFighterMesh(fighterId);
   }
 
-  update(fighter: FighterState, presentTick: number): ResolvedAnim {
+  update(fighter: FighterState, presentTick: number, frozen = false): ResolvedAnim {
     this.facing = fighter.facing;
-    this.anim = resolveFighterAnimation(this.profile, fighter, presentTick);
-    this.solveBones(this.anim.pose);
-    return this.anim;
+    // When hitstop-frozen, hold last anim but still allow impact squash decay visually unless frozen hard
+    if (!frozen || !this.anim) {
+      this.anim = resolveFighterAnimation(this.profile, fighter, presentTick);
+      this.solveBones(this.anim.pose);
+    }
+    if (this.impactSquash > 0 && !frozen) {
+      this.impactSquash = Math.max(0, this.impactSquash - 0.08);
+    }
+    return this.anim!;
+  }
+
+  pulseImpact(amount = 0.35): void {
+    this.impactSquash = Math.min(0.55, this.impactSquash + amount);
   }
 
   private solveBones(pose: PoseMap): void {
@@ -89,8 +106,7 @@ export class ProceduralFighterMesh {
 
       const lx = (bind.x + (p.ox ?? 0)) * widthScale * scale;
       const ly = (bind.y + (p.oy ?? 0)) * scale;
-      const rotDeg = p.rot;
-      const rot = (rotDeg * Math.PI) / 180;
+      const rot = ((p.rot ?? 0) * Math.PI) / 180;
 
       if (!parent) {
         this.bones[id] = {
@@ -117,7 +133,6 @@ export class ProceduralFighterMesh {
     }
   }
 
-  /** World attach point in presentation units relative to feet. */
   getAttachLocal(attachId: string): { x: number; y: number } | null {
     const ap = this.profile.attach.find((a) => a.id === attachId);
     if (!ap) return null;
@@ -127,18 +142,13 @@ export class ProceduralFighterMesh {
     const sin = Math.sin(b.rot);
     const along = ap.along * this.profile.height;
     const perp = ap.perp * this.profile.height;
-    // along is down the limb (+Y in bind for arms); use bone +Y direction
+    // Limb bones point +Y down the arm/leg in bind space
     return {
       x: b.x + along * sin + perp * cos,
       y: b.y + along * cos - perp * sin,
     };
   }
 
-  /**
-   * Draw the procedural mesh.
-   * `originX/Y` = screen feet position.
-   * `facing` flips horizontally.
-   */
   draw(
     ctx: CanvasRenderingContext2D,
     originX: number,
@@ -149,20 +159,23 @@ export class ProceduralFighterMesh {
     this.screenY = originY;
     const facing = opts.facing;
     const parts = [...this.profile.parts].sort((a, b) => a.z - b.z);
+    const squash = 1 - this.impactSquash * 0.35;
+    const stretch = 1 + this.impactSquash * 0.2;
 
     ctx.save();
     ctx.translate(originX, originY);
-    ctx.scale(facing, 1);
+    // Impact squash toward feet
+    ctx.scale(facing * stretch, squash);
 
-    // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    // Contact shadow on floor (always under feet)
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
-    ctx.ellipse(0, 4, 26 * this.profile.width, 8, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 2, 28 * this.profile.width, 7, 0, 0, Math.PI * 2);
     ctx.fill();
 
     if (opts.activeGlow) {
       ctx.shadowColor = this.profile.primary;
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 16;
     }
 
     for (const part of parts) {
@@ -186,8 +199,8 @@ export class ProceduralFighterMesh {
     color: string,
   ): void {
     ctx.fillStyle = color;
-    ctx.strokeStyle = 'rgba(0,0,0,0.45)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1.4;
 
     if (part.shape === 'poly' && part.points && part.points.length >= 3) {
       ctx.beginPath();
@@ -196,7 +209,7 @@ export class ProceduralFighterMesh {
         ctx.lineTo(part.points[i]!.x, part.points[i]!.y);
       }
       ctx.closePath();
-      ctx.globalAlpha = 0.85;
+      ctx.globalAlpha = 0.88;
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.stroke();
@@ -221,10 +234,10 @@ export class ProceduralFighterMesh {
         ctx.globalAlpha = 0.35;
         ctx.beginPath();
         ctx.ellipse(
-          part.x + part.w * 0.45,
+          part.x + part.w * 0.4,
           part.y + part.h * 0.35,
-          part.w * 0.2,
-          part.h * 0.15,
+          part.w * 0.18,
+          part.h * 0.14,
           0,
           0,
           Math.PI * 2,
@@ -235,15 +248,21 @@ export class ProceduralFighterMesh {
       return;
     }
 
-    // box / capsule
-    const r = part.shape === 'capsule' ? Math.min(part.w, part.h) / 2 : 4;
+    const r = part.shape === 'capsule' ? Math.min(part.w, part.h) / 2 : 3.5;
     roundRect(ctx, part.x, part.y, part.w, part.h, r);
     ctx.fill();
     ctx.stroke();
     if (part.accent) {
       ctx.fillStyle = part.accent;
       ctx.globalAlpha = 0.4;
-      roundRect(ctx, part.x + 2, part.y + 2, part.w * 0.35, part.h * 0.25, 2);
+      roundRect(
+        ctx,
+        part.x + 2,
+        part.y + 2,
+        Math.max(2, part.w * 0.35),
+        Math.max(2, part.h * 0.22),
+        2,
+      );
       ctx.fill();
       ctx.globalAlpha = 1;
     }
@@ -268,7 +287,6 @@ function roundRect(
   ctx.closePath();
 }
 
-/** Combat fp → presentation local Y (up negative in bone space is up on screen when subtracted). */
 export function fighterScreenPos(
   f: FighterState,
   worldToScreen: (x: number, y: number) => { x: number; y: number },

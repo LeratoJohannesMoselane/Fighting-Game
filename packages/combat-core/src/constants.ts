@@ -78,22 +78,31 @@ export const ARENA_HALF_WIDTH = 9500;
 export const GROUND_Y = 0;
 
 /** Default gravity acceleration per tick (fp units / tick²). */
-export const GRAVITY = 37;
+export const GRAVITY = 42;
 
 /** Default jump initial velocity (fp units / tick). */
-export const JUMP_VELOCITY = 780;
+export const JUMP_VELOCITY = 820;
 
 /** Default walk speed (fp units / tick). Nyra baseline; Bram is slower in content. */
-export const DEFAULT_WALK_SPEED = 286;
+export const DEFAULT_WALK_SPEED = 310;
+
+/** Ground acceleration toward walk speed (fp / tick²). */
+export const WALK_ACCEL = 55;
+
+/** Ground friction when no input (fp / tick²). */
+export const GROUND_FRICTION = 48;
+
+/** Air control factor vs walk accel (0–1). */
+export const AIR_CONTROL = 0.45;
 
 /** Forward dash speed impulse (fp units / tick) applied for DASH_ACTIVE_FRAMES. */
-export const DASH_SPEED = 700;
+export const DASH_SPEED = 820;
 
 /** Dash duration in frames. */
-export const DASH_ACTIVE_FRAMES = 10;
+export const DASH_ACTIVE_FRAMES = 12;
 
 /** Dash recovery frames after active. */
-export const DASH_RECOVERY_FRAMES = 8;
+export const DASH_RECOVERY_FRAMES = 6;
 
 /** Round intro freeze frames before control is unlocked. */
 export const ROUND_INTRO_FRAMES = 60;

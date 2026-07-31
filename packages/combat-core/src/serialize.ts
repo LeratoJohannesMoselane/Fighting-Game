@@ -80,13 +80,17 @@ function fighterToCanonical(f: FighterState): Record<string, unknown> {
 
 function projectileToCanonical(p: ProjectileState): Record<string, unknown> {
   return {
+    age: p.age ?? 0,
     blockStun: p.blockStun,
+    bounce: p.bounce ?? 0,
     damage: p.damage,
     facing: p.facing,
     fluxGain: p.fluxGain,
+    gravity: p.gravity ?? 0,
     height: p.height,
     hitStun: p.hitStun,
     id: p.id,
+    kind: p.kind ?? 'bullet',
     lifetime: p.lifetime,
     moveId: p.moveId,
     ownerSlot: p.ownerSlot,

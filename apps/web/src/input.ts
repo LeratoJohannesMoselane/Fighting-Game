@@ -10,6 +10,7 @@ const P1_MAP: Record<string, keyof ActionBits> = {
   KeyG: 'heavy',
   KeyH: 'ranged',
   KeyR: 'ability1',
+  KeyT: 'ability2', // bomb / snake
   KeyQ: 'ultimate',
   ShiftLeft: 'guard',
   ShiftRight: 'guard',
@@ -25,6 +26,7 @@ const P2_MAP: Record<string, keyof ActionBits> = {
   KeyK: 'heavy',
   KeyL: 'ranged',
   KeyU: 'ability1',
+  KeyI: 'ability2', // bomb / snake
   KeyO: 'ultimate',
   Slash: 'guard',
   Period: 'dash',

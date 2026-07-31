@@ -1,10 +1,12 @@
 import {
+  AIR_CONTROL,
   BODY_HALF_WIDTH,
   DASH_ACTIVE_FRAMES,
   DASH_RECOVERY_FRAMES,
   DASH_STAMINA_COST,
   DEFAULT_HITSTOP_FRAMES,
   GRAVITY,
+  GROUND_FRICTION,
   GROUND_Y,
   MAX_MAGIC,
   MAX_ROUNDS,
@@ -13,6 +15,7 @@ import {
   ROUND_END_FRAMES,
   ROUND_INTRO_FRAMES,
   ROUNDS_TO_WIN,
+  WALK_ACCEL,
 } from './constants.js';
 import { findMoveByInput, getKit, getMove } from './content/fighters.js';
 import { bufferHas, consumeBufferAction, normalizeActions, pushBuffer } from './input.js';
@@ -200,35 +203,57 @@ function tickFighter(s: GameState, f: FighterState, input: ActionBits, inHitstop
 function applyLocomotion(f: FighterState, input: ActionBits): void {
   const kit = getKit(f.id);
   const onGround = f.y <= GROUND_Y && f.vy <= 0;
+  const maxWalk = kit.base.walk;
 
   if (onGround) {
     f.jumpUsed = false;
     if (input.down) {
       f.phase = 'crouch';
-      f.vx = 0;
-    } else if (input.left) {
-      f.phase = 'walk';
-      f.vx = -kit.base.walk;
-    } else if (input.right) {
-      f.phase = 'walk';
-      f.vx = kit.base.walk;
+      // Hard stop when crouching
+      f.vx = approach(f.vx, 0, GROUND_FRICTION * 2);
     } else {
-      f.phase = 'neutral';
-      f.vx = 0;
+      let target = 0;
+      if (input.left && !input.right) target = -maxWalk;
+      else if (input.right && !input.left) target = maxWalk;
+
+      if (target !== 0) {
+        f.phase = 'walk';
+        f.vx = approach(f.vx, target, WALK_ACCEL);
+      } else {
+        f.phase = 'neutral';
+        f.vx = approach(f.vx, 0, GROUND_FRICTION);
+      }
     }
 
     const jumpBuf = bufferHas(f.inputBuffer, 'jump');
-    if (jumpBuf.hit && !f.jumpUsed) {
+    if (jumpBuf.hit && !f.jumpUsed && !input.down) {
       f.vy = kit.base.jumpVelocity;
       f.jumpUsed = true;
       f.phase = 'jump';
+      // Carry some run speed into jump
+      f.vx = ((f.vx * 9) / 10) | 0;
       f.inputBuffer = consumeBufferAction(f.inputBuffer, 'jump');
     }
   } else {
     f.phase = f.vy > 0 ? 'jump' : 'airborne';
-    if (input.left) f.vx = -((kit.base.walk * 7) / 10) | 0;
-    else if (input.right) f.vx = ((kit.base.walk * 7) / 10) | 0;
+    const airTarget =
+      input.left && !input.right
+        ? -((maxWalk * 8) / 10) | 0
+        : input.right && !input.left
+          ? ((maxWalk * 8) / 10) | 0
+          : f.vx;
+    const accel = (WALK_ACCEL * AIR_CONTROL) | 0;
+    if (input.left || input.right) {
+      f.vx = approach(f.vx, airTarget, Math.max(1, accel));
+    }
   }
+}
+
+/** Move current toward target by at most rate (integer). */
+function approach(current: number, target: number, rate: number): number {
+  if (current < target) return Math.min(current + rate, target) | 0;
+  if (current > target) return Math.max(current - rate, target) | 0;
+  return current | 0;
 }
 
 function tryStartAction(s: GameState, f: FighterState, input: ActionBits): void {
@@ -291,6 +316,7 @@ function tryStartAction(s: GameState, f: FighterState, input: ActionBits): void 
   if (tryMove('light', 'LIGHT')) return;
   if (tryMove('ranged', 'RANGED')) return;
   if (tryMove('ability1', 'SPELL')) return;
+  if (tryMove('ability2', 'ABILITY2')) return;
 }
 
 /** Returns which resource is missing, or null if affordable. */
@@ -415,6 +441,7 @@ function tryCancel(s: GameState, f: FighterState, current: MoveData): void {
     { key: 'light', input: 'LIGHT' },
     { key: 'ranged', input: 'RANGED' },
     { key: 'ability1', input: 'SPELL' },
+    { key: 'ability2', input: 'ABILITY2' },
   ];
   for (let i = 0; i < candidates.length; i++) {
     const c = candidates[i]!;
@@ -538,12 +565,14 @@ function spawnProjectile(s: GameState, f: FighterState, move: MoveData): void {
   if (count >= maxActive) return;
 
   const id = s.nextProjectileId++;
+  const kind = def.kind ?? (move.input === 'SPELL' ? 'orb' : 'bullet');
+  const spawnY = kind === 'snake' ? f.y + 200 : kind === 'bomb' ? f.y + 1100 : f.y + 950;
   const proj: ProjectileState = {
     id,
     ownerSlot: f.slot,
     moveId: move.id,
-    x: f.x + f.facing * 500,
-    y: f.y + 900,
+    x: f.x + f.facing * (kind === 'snake' ? 400 : 550),
+    y: spawnY,
     vx: def.speedX * f.facing,
     vy: def.speedY,
     width: def.width,
@@ -554,6 +583,10 @@ function spawnProjectile(s: GameState, f: FighterState, move: MoveData): void {
     fluxGain: def.fluxGain,
     lifetime: def.lifetime,
     facing: f.facing,
+    kind,
+    gravity: def.gravity ?? (kind === 'bomb' ? 28 : kind === 'snake' ? 0 : 0),
+    bounce: def.bounce ?? (kind === 'bomb' ? 0.45 : 0),
+    age: 0,
   };
   s.projectiles.push(proj);
   s.events.push({
@@ -569,8 +602,33 @@ function updateProjectiles(s: GameState): void {
   const next: ProjectileState[] = [];
   for (let i = 0; i < s.projectiles.length; i++) {
     const p = s.projectiles[i]!;
-    p.x = (p.x + p.vx) | 0;
-    p.y = (p.y + p.vy) | 0;
+    p.age = (p.age ?? 0) + 1;
+
+    // Snake: sine-wave vertical wriggle while crawling forward
+    if (p.kind === 'snake') {
+      const wriggle = (((p.age % 20) - 10) * 18) | 0;
+      p.x = (p.x + p.vx) | 0;
+      p.y = Math.max(GROUND_Y + 80, 200 + wriggle);
+      // Keep near ground
+      if (p.y < GROUND_Y + 60) p.y = GROUND_Y + 120;
+    } else {
+      if (p.gravity) p.vy = (p.vy - p.gravity) | 0;
+      p.x = (p.x + p.vx) | 0;
+      p.y = (p.y + p.vy) | 0;
+      // Ground bounce for bombs
+      if (p.y <= GROUND_Y + 40) {
+        p.y = GROUND_Y + 40;
+        if (p.bounce > 0 && p.vy < 0) {
+          p.vy = (-p.vy * p.bounce) | 0;
+          p.vx = ((p.vx * 85) / 100) | 0;
+          if (Math.abs(p.vy) < 40) p.vy = 0;
+        } else if (p.kind === 'bomb') {
+          // Fuse expire soon after settling
+          p.lifetime = Math.min(p.lifetime, 8);
+        }
+      }
+    }
+
     p.lifetime -= 1;
     if (p.lifetime <= 0) continue;
     if (p.x < -12000 || p.x > 12000) continue;
