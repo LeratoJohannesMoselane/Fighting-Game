@@ -34,6 +34,14 @@ export class ProceduralAssetSystem {
   private lastPhase = new Map<string, string>();
   private lastMoveFrame = new Map<string, number>();
   private unlocked = false;
+  /** Active colorway per slot (presentation-side; set at match start). */
+  private colorways: [string, string] = ['classic', 'classic'];
+
+  /** Apply selected colorways; meshes regenerate on next reference. */
+  setColorways(p1: string, p2: string): void {
+    this.colorways = [p1, p2];
+    this.meshes.clear();
+  }
 
   reset(): void {
     this.meshes.clear();
@@ -60,14 +68,14 @@ export class ProceduralAssetSystem {
   }
 
   private meshKey(f: FighterState): string {
-    return `${f.slot}:${f.id}`;
+    return `${f.slot}:${f.id}:${this.colorways[f.slot]}`;
   }
 
   private getMesh(f: FighterState): ProceduralFighterMesh {
     const key = this.meshKey(f);
     let m = this.meshes.get(key);
     if (!m || m.fighterId !== f.id) {
-      m = ProceduralFighterMesh.generate(f.id);
+      m = ProceduralFighterMesh.generate(f.id, this.colorways[f.slot]);
       this.meshes.set(key, m);
     }
     return m;

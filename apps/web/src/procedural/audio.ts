@@ -9,6 +9,7 @@ export class ProceduralAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private enabled = true;
+  private masterVolume = 0.35;
   private lastPlay = new Map<string, number>();
 
   unlock(): void {
@@ -20,6 +21,12 @@ export class ProceduralAudio {
 
   setEnabled(on: boolean): void {
     this.enabled = on;
+  }
+
+  /** 0..1 master gain (audio option; applied live when ctx exists). */
+  setMasterVolume(v: number): void {
+    this.masterVolume = Math.max(0, Math.min(1, v)) * 0.5;
+    if (this.master) this.master.gain.value = this.masterVolume;
   }
 
   play(kind: SfxKind['id'], opts: { intensity?: number; pitch?: number } = {}): void {
@@ -106,7 +113,7 @@ export class ProceduralAudio {
         (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       this.ctx = new AC();
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.35;
+      this.master.gain.value = this.masterVolume;
       this.master.connect(this.ctx.destination);
     }
     return this.ctx;

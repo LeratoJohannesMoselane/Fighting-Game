@@ -34,6 +34,12 @@ interface Afterimage {
 const POOL_CAP = 400;
 
 export class ProceduralVfx {
+  /** 0..1 particle density scaler (graphics option). */
+  private density = 1;
+
+  setDensity(d: number): void {
+    this.density = Math.max(0.1, Math.min(1, d));
+  }
   private particles: Particle[] = [];
   private afterimages: Afterimage[] = [];
   private rings: {
@@ -53,6 +59,9 @@ export class ProceduralVfx {
   }
 
   spawn(req: VfxRequest): void {
+    // Density budget: probabilistically drop spawn requests (never flashes/rings —
+    // those carry gameplay readability like ult auras and block confirms).
+    if (this.density < 1 && req.kind !== 'ult_aura' && Math.random() > this.density) return;
     const scale = req.scale ?? 1;
     const facing = req.facing ?? 1;
     switch (req.kind) {
