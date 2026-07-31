@@ -9,7 +9,11 @@
 import type { Scene } from '@babylonjs/core/scene';
 import type { AnimationGroup } from '@babylonjs/core/Animations/animationGroup';
 import { crossFade } from './retarget';
-import { loadAndRetargetClip, type LoadClipOptions } from './animationLibrary';
+import {
+  loadAndRetargetClip,
+  loadAnimationLibrary,
+  type LoadClipOptions,
+} from './animationLibrary';
 import type { ProceduralCharacter } from './proceduralCharacter';
 
 export interface ClipSpec {
@@ -74,6 +78,35 @@ export class CharacterController {
       }
     }
     return { loaded, failed };
+  }
+
+  /**
+   * Load a COMBINED library file (many named clips in one .glb) — the format
+   * the Quaternius Godot export actually ships.
+   *
+   * @param rename  Optional map of the library's own clip name → your key,
+   *                e.g. `{ 'Idle_Neutral': 'idle', 'Walk_Fwd': 'walk' }`.
+   *                Clips not listed keep their original name.
+   * @param only    Optional whitelist; skip the other 120 animations.
+   */
+  async loadLibrary(
+    url: string,
+    opts: { rename?: Record<string, string>; only?: string[]; inPlace?: boolean } = {},
+  ): Promise<string[]> {
+    const library = await loadAnimationLibrary(this.scene, url, this.character.skeleton, {
+      loop: true,
+      inPlace: opts.inPlace ?? false,
+      ...(opts.only ? { only: opts.only } : {}),
+    });
+
+    const added: string[] = [];
+    for (const [originalName, clip] of Object.entries(library)) {
+      const key = opts.rename?.[originalName] ?? originalName;
+      clip.group.stop();
+      this.clips.set(key, clip.group);
+      added.push(key);
+    }
+    return added;
   }
 
   /** Register an already-retargeted group. */

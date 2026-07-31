@@ -28,7 +28,12 @@ export type { ProceduralCharacter, BuildOptions } from './proceduralCharacter';
 export { retargetAnimationGroup, stripRootMotion, crossFade } from './retarget';
 export type { RetargetReport, RetargetResult } from './retarget';
 
-export { loadAndRetargetClip, inspectGlb, printGlbBoneNames } from './animationLibrary';
+export {
+  loadAndRetargetClip,
+  loadAnimationLibrary,
+  inspectGlb,
+  printGlbBoneNames,
+} from './animationLibrary';
 export type { LoadedClip, LoadClipOptions } from './animationLibrary';
 
 export { CharacterController } from './characterController';

@@ -22,9 +22,9 @@ import {
 } from '../humanoidRig';
 import { createProceduralCharacter } from '../proceduralCharacter';
 import { retargetAnimationGroup, stripRootMotion } from '../retarget';
-import { loadAndRetargetClip, inspectGlb } from '../animationLibrary';
+import { loadAndRetargetClip, loadAnimationLibrary, inspectGlb } from '../animationLibrary';
 import { CharacterController } from '../characterController';
-import { buildSourceGlb, makeScene, type TestScene } from './helpers';
+import { buildLibraryGlb, buildSourceGlb, makeScene, type TestScene } from './helpers';
 
 let ctx: TestScene;
 
@@ -274,6 +274,73 @@ describe('animation library', () => {
     await expect(loadAndRetargetClip(ctx.scene, glb, hero.skeleton)).rejects.toThrow(
       /No animation groups/,
     );
+  });
+});
+
+describe('combined animation library', () => {
+  // This is the shape the Quaternius Godot export actually ships:
+  // AnimationLibrary_Godot_Standard.glb — many named clips in ONE file.
+  const LIB = [
+    { name: 'Idle', slots: ['Spine', 'Head'] as const },
+    { name: 'Walk', slots: ['LeftUpperLeg', 'RightUpperLeg'] as const },
+    { name: 'Sword_Slash', slots: ['RightUpperArm'] as const },
+  ];
+
+  it('keeps each clip\u2019s own name from inside the .glb', async () => {
+    const hero = createProceduralCharacter(ctx.scene, { scheme: UNITY_SCHEME });
+    const glb = await buildLibraryGlb(
+      UNITY_SCHEME,
+      LIB.map((c) => ({ ...c, slots: [...c.slots] })),
+    );
+    const clips = await loadAndRetargetClip(ctx.scene, glb, hero.skeleton);
+
+    // Names must be the real ones, NOT positional file_0 / file_1.
+    expect(clips.map((c) => c.name).sort()).toEqual(['Idle', 'Sword_Slash', 'Walk']);
+    for (const c of clips) expect(c.report.dropped).toBe(0);
+  });
+
+  it('loadAnimationLibrary returns clips keyed by name', async () => {
+    const hero = createProceduralCharacter(ctx.scene, { scheme: UNITY_SCHEME });
+    const glb = await buildLibraryGlb(
+      UNITY_SCHEME,
+      LIB.map((c) => ({ ...c, slots: [...c.slots] })),
+    );
+    const lib = await loadAnimationLibrary(ctx.scene, glb, hero.skeleton);
+
+    expect(Object.keys(lib).sort()).toEqual(['Idle', 'Sword_Slash', 'Walk']);
+    expect(lib.Idle!.group.loopAnimation).toBe(true);
+  });
+
+  it('`only` filters a large library down to the clips you want', async () => {
+    const hero = createProceduralCharacter(ctx.scene, { scheme: UNITY_SCHEME });
+    const glb = await buildLibraryGlb(
+      UNITY_SCHEME,
+      LIB.map((c) => ({ ...c, slots: [...c.slots] })),
+    );
+    const lib = await loadAnimationLibrary(ctx.scene, glb, hero.skeleton, {
+      only: ['idle', 'walk'],
+    });
+
+    expect(Object.keys(lib).sort()).toEqual(['Idle', 'Walk']);
+  });
+
+  it('controller.loadLibrary can rename clips to gameplay keys', async () => {
+    const hero = createProceduralCharacter(ctx.scene, { scheme: UNITY_SCHEME });
+    const glb = await buildLibraryGlb(
+      UNITY_SCHEME,
+      LIB.map((c) => ({ ...c, slots: [...c.slots] })),
+    );
+    const controller = new CharacterController(ctx.scene, hero);
+
+    const keys = await controller.loadLibrary(glb, {
+      rename: { Idle: 'idle', Walk: 'walk', Sword_Slash: 'attack' },
+    });
+
+    expect(keys.sort()).toEqual(['attack', 'idle', 'walk']);
+    expect(controller.play('idle')).toBe(true);
+    expect(controller.play('attack')).toBe(true);
+    expect(controller.playing).toBe('attack');
+    controller.dispose();
   });
 });
 

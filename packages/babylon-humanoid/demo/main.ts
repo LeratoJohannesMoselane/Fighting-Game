@@ -33,9 +33,26 @@ import {
 import { HUMANOID_ORDER, KNOWN_SCHEMES } from '../src/humanoidRig';
 
 /**
- * EDIT ME — the clips to load, and the key you'll use for each.
- * File names are from the Universal Animation Library 2 [Standard] /GLB/ folder.
+ * EDIT ME
+ *
+ * The pack ships in two possible layouts, and the demo supports both:
+ *
+ *  A) ONE COMBINED LIBRARY (what the Godot export gives you)
+ *     demo/public/animations/AnimationLibrary_Godot_Standard.glb
+ *     → every clip lives inside that single file, already named.
+ *     Set LIBRARY_URL and leave CLIPS empty.
+ *
+ *  B) ONE FILE PER CLIP (if you exported them individually)
+ *     demo/public/animations/IDLE_NO.glb, WALK_CARRY.glb, ...
+ *     → list them in CLIPS and leave LIBRARY_URL null.
+ *
+ * The demo tries the library first, then falls back to the individual files.
  */
+const LIBRARY_URL: string | null = '/animations/AnimationLibrary_Godot_Standard.glb';
+
+/** Only load these from the library (it may hold 130+). Empty = load all. */
+const LIBRARY_ONLY: string[] = [];
+
 const CLIPS: ClipSpec[] = [
   { key: 'idle', url: '/animations/IDLE_NO.glb', loop: true },
   { key: 'walk', url: '/animations/WALK_CARRY.glb', loop: true, inPlace: true },
@@ -134,10 +151,10 @@ async function boot(): Promise<void> {
   // Inspect the first clip so we can report the real bone names. This is the
   // step that removes all guesswork about which naming scheme the pack uses.
   let detectedNote = '';
-  const first = CLIPS[0];
-  if (first) {
+  const probeUrl = LIBRARY_URL ?? CLIPS[0]?.url;
+  if (probeUrl) {
     try {
-      const info = await inspectGlb(scene, first.url);
+      const info = await inspectGlb(scene, probeUrl);
       const det = info.detected;
       detectedNote =
         `<b>Detected rig:</b> ${det.schemeName} — matched ${det.matched.length}/${HUMANOID_ORDER.length} slots<br>` +
@@ -159,12 +176,34 @@ async function boot(): Promise<void> {
       }
     } catch {
       detectedNote =
-        `<span class="warn">Could not read <code>${first.url}</code>.</span><br>` +
+        `<span class="warn">Could not read <code>${probeUrl}</code>.</span><br>` +
         `Put the pack's .glb files in <code>demo/public/animations/</code>.<br>`;
     }
   }
 
-  const { loaded, failed } = await controller.loadAll(CLIPS);
+  // Layout A: one combined library file.
+  let loaded: string[] = [];
+  let failed: string[] = [];
+
+  if (LIBRARY_URL) {
+    try {
+      loaded = await controller.loadLibrary(LIBRARY_URL, {
+        ...(LIBRARY_ONLY.length ? { only: LIBRARY_ONLY } : {}),
+      });
+      if (loaded.length) {
+        detectedNote += `<b>Loaded ${loaded.length} clip(s) from the combined library.</b><br>`;
+      }
+    } catch {
+      /* fall through to per-file loading */
+    }
+  }
+
+  // Layout B: individual per-clip files.
+  if (loaded.length === 0) {
+    const r = await controller.loadAll(CLIPS);
+    loaded = r.loaded;
+    failed = r.failed;
+  }
 
   if (loaded.length === 0) {
     setLog(

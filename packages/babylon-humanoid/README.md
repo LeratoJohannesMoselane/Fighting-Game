@@ -14,18 +14,42 @@ primitives in code; the motion comes from the downloaded `.glb` clips.
 pnpm add @babylonjs/core @babylonjs/loaders
 ```
 
-### 2. Get the animations
+### 2. Get the animations — where they go, what to name them
 
 Download **Universal Animation Library 2 [Standard]** (free, CC0) from
-<https://quaternius.itch.io/universal-animation-library-2>, extract it, and copy
-the files from the `/GLB/` folder into your public assets directory:
+<https://quaternius.itch.io/universal-animation-library-2>, then copy the `.glb`
+files into your public assets folder. In this repo that is:
 
 ```
-public/animations/
-  IDLE_NO.glb
-  WALK_CARRY.glb
-  SWORD_REGULAR_A.glb
+packages/babylon-humanoid/demo/public/animations/
 ```
+
+Files there are served from the web root, so `IDLE_NO.glb` → `/animations/IDLE_NO.glb`.
+
+**Keep the original filenames.** Clip names live *inside* each `.glb`; you map
+them to your own keys in code, so renaming files on disk gains nothing.
+
+The pack comes in one of two layouts, and both are supported:
+
+**A — one combined library** (the Godot export, usually easiest):
+
+```
+animations/AnimationLibrary_Godot_Standard.glb    ← all clips in ONE file
+```
+
+**B — one file per clip:**
+
+```
+animations/IDLE_NO.glb
+animations/WALK_CARRY.glb
+animations/SWORD_REGULAR_A.glb
+```
+
+> **Characters?** You don't need one. The character is generated in code by
+> `createProceduralCharacter()`. Only add a model file if you later want to
+> replace the box-man — see "Using a real model" below.
+
+Full placement guide: [`demo/public/animations/README.md`](demo/public/animations/README.md)
 
 ### 3. Find out what the bones are actually called ← **do not skip this**
 
@@ -59,11 +83,24 @@ const hero = createProceduralCharacter(scene, { scheme: UNITY_SCHEME });
 
 ### 5. Load + retarget + play
 
+**Layout A — one combined library.** Map the pack's clip names to your own keys:
+
 ```ts
 import { CharacterController } from '@aether-break/babylon-humanoid';
 
 const controller = new CharacterController(scene, hero);
 
+await controller.loadLibrary('/animations/AnimationLibrary_Godot_Standard.glb', {
+  only:   ['Idle', 'Walk', 'Sword_Slash'],          // skip the other 120+
+  rename: { Idle: 'idle', Walk: 'walk', Sword_Slash: 'attack' },
+});
+
+controller.play('idle');
+```
+
+**Layout B — one file per clip:**
+
+```ts
 await controller.loadAll([
   { key: 'idle',  url: '/animations/IDLE_NO.glb',          loop: true },
   { key: 'walk',  url: '/animations/WALK_CARRY.glb',       loop: true, inPlace: true },
@@ -72,6 +109,9 @@ await controller.loadAll([
 
 controller.play('idle');
 ```
+
+Not sure what's inside your file? `await printGlbBoneNames(scene, url)` lists
+every clip name and bone name in your actual download.
 
 ### 6. Drive it from gameplay
 
@@ -183,12 +223,28 @@ files, then reports what it found on screen.
 | `createProceduralCharacter(scene, opts)` | Skinned box-man + 22-bone rig |
 | `CharacterController` | Clip library + cross-fading state machine |
 | `loadAndRetargetClip(scene, url, skeleton, opts)` | Load one `.glb`, retarget it |
+| `loadAnimationLibrary(scene, url, skeleton, opts)` | Load a **combined** multi-clip `.glb`, keyed by clip name |
 | `retargetAnimationGroup(group, skeleton, name, map?)` | Low-level retarget |
 | `stripRootMotion(group, hipsName)` | Root-motion clip → in-place |
 | `crossFade(scene, from, to, ms)` | Weight-blend two groups |
 | `inspectGlb` / `printGlbBoneNames` | **Diagnostics — run first** |
 | `detectScheme(boneNames)` | Identify + repair a naming scheme |
 | `slotForBoneName(name)` | Any bone name → semantic slot |
+
+### Using a real model instead of the box-man
+
+Nothing here is tied to the procedural character — `retargetAnimationGroup()`
+takes any skeleton. Drop a rigged `.glb` in `demo/public/models/` and retarget
+onto its own rig:
+
+```ts
+const model = await LoadAssetContainerAsync('/models/hero.glb', scene);
+model.addAllToScene();
+await loadAnimationLibrary(scene, libraryUrl, model.skeletons[0]);
+```
+
+Caveat: a third-party model's rest pose and joint orientations may not match the
+animation's, which renaming alone cannot fix (see Troubleshooting).
 
 ### Root motion
 

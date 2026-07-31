@@ -62,13 +62,23 @@ export async function loadAndRetargetClip(
 
     const clips: LoadedClip[] = [];
     const stem = fileStem(url);
+    const single = container.animationGroups.length === 1;
 
     container.animationGroups.forEach((sourceGroup, i) => {
       // Source groups must be stopped or they will fight the retargeted copy.
       sourceGroup.stop();
 
+      // Naming priority:
+      //  1. explicit clipName (only meaningful for single-clip files)
+      //  2. the animation's OWN name from inside the .glb — a combined
+      //     library like AnimationLibrary_Godot_Standard.glb carries real
+      //     names ("Idle", "Walk", "Sword_Slash"), which are far more useful
+      //     than positional "file_0", "file_1" keys.
+      //  3. the file stem, for a single unnamed clip.
+      const ownName = sourceGroup.name?.trim();
       const clipName =
-        options.clipName ?? (container.animationGroups.length > 1 ? `${stem}_${i}` : stem);
+        (single ? options.clipName : undefined) ??
+        (ownName && ownName.length > 0 ? ownName : `${stem}_${i}`);
 
       const { group, report } = retargetAnimationGroup(
         sourceGroup,
@@ -91,6 +101,36 @@ export async function loadAndRetargetClip(
     // Drop the source rig/mesh/nodes; our retargeted groups no longer need it.
     container.dispose();
   }
+}
+
+/**
+ * Load a COMBINED animation library — one .glb holding many named clips.
+ *
+ * This is what the Quaternius Godot export actually ships:
+ * `AnimationLibrary_Godot_Standard.glb` contains every animation as a
+ * separately-named group, rather than one file per clip.
+ *
+ * @param only  Optional whitelist of clip names to keep (case-insensitive).
+ *              Handy when a 130-animation library only needs six of them.
+ */
+export async function loadAnimationLibrary(
+  scene: Scene,
+  url: string,
+  skeleton: Skeleton,
+  options: Omit<LoadClipOptions, 'clipName'> & { only?: string[] } = {},
+): Promise<Record<string, LoadedClip>> {
+  const wanted = options.only?.map((n) => n.toLowerCase());
+  const clips = await loadAndRetargetClip(scene, url, skeleton, options);
+
+  const byName: Record<string, LoadedClip> = {};
+  for (const clip of clips) {
+    if (wanted && !wanted.includes(clip.name.toLowerCase())) {
+      clip.group.dispose();
+      continue;
+    }
+    byName[clip.name] = clip;
+  }
+  return byName;
 }
 
 /**
