@@ -1,0 +1,502 @@
+{
+  "fighterId": "iria_sol",
+  "version": "1.0.0",
+  "displayName": "Iria Sol",
+  "title": "Prism Magus",
+  "difficulty": 4,
+  "description": "Runic staff and prism cards. Zones with delayed Gate bolts, reflects projectiles with Mirror Ward, and confirms into Sevenfold Star.",
+  "archetype": "zoner_setup",
+  "colorPrimary": "#5CE1FF",
+  "colorSecondary": "#A78BFA",
+  "base": {
+    "hp": 920,
+    "walk": 245,
+    "walkSpeed": 245,
+    "dashSpeed": 620,
+    "jumpVelocity": 740,
+    "jumpHeight": 740,
+    "weight": 900,
+    "weightClass": "light",
+    "meterGainRate": 1.1,
+    "meleeWhiffMeterPenalty": 0.85,
+    "blockDamageReduction": 0.78
+  },
+  "resources": {
+    "prismCharges": {
+      "type": "charges",
+      "max": 3,
+      "start": 2,
+      "rechargeRate": 1,
+      "rechargeIntervalTicks": 180,
+      "rechargeDelay": 0,
+      "pauseOnHitstun": true
+    },
+    "gunHeat": {
+      "type": "recharge",
+      "max": 100,
+      "rechargeRate": 0.9,
+      "rechargeDelay": 12,
+      "gainOnRanged": 22,
+      "blockAt": 80
+    }
+  },
+  "hurtbox": { "x": -520, "y": 0, "w": 1040, "h": 1680 },
+  "normals": [
+    {
+      "id": "iria_light_1",
+      "name": "Refract Jab",
+      "input": ["LIGHT"],
+      "startup": 5,
+      "active": [5, 7],
+      "recovery": 11,
+      "hitboxes": [{ "frame": 5, "shape": "box", "x": 420, "y": 900, "w": 720, "h": 360 }],
+      "hurtbox": { "x": -520, "y": 0, "w": 1040, "h": 1680 },
+      "onHit": {
+        "damage": 36,
+        "hitStun": 14,
+        "blockStun": 9,
+        "meterGain": 4,
+        "fluxGain": 4,
+        "knockback": 100,
+        "knockbackX": 100,
+        "knockbackY": 0,
+        "launches": false,
+        "cancelWindow": 10
+      },
+      "onBlock": {
+        "blockStun": 9,
+        "advantage": -2,
+        "pushback": 80,
+        "chip": 0
+      },
+      "cancelTo": ["iria_light_2", "iria_heavy", "iria_gate", "iria_bolt"],
+      "hitEffect": "iria_hit_light",
+      "attackLevel": "light"
+    },
+    {
+      "id": "iria_light_2",
+      "name": "Facet Hook",
+      "input": ["LIGHT"],
+      "requiresCancelFrom": ["iria_light_1"],
+      "startup": 6,
+      "active": [6, 9],
+      "recovery": 14,
+      "hitboxes": [{ "frame": 6, "shape": "box", "x": 380, "y": 700, "w": 860, "h": 520 }],
+      "hurtbox": { "x": -500, "y": 0, "w": 1000, "h": 1680 },
+      "onHit": {
+        "damage": 48,
+        "hitStun": 18,
+        "blockStun": 11,
+        "meterGain": 6,
+        "fluxGain": 6,
+        "knockback": 140,
+        "knockbackX": 120,
+        "knockbackY": 280,
+        "launches": true,
+        "cancelWindow": 12,
+        "confirmWindowTicks": 20
+      },
+      "onBlock": {
+        "blockStun": 11,
+        "advantage": -4,
+        "pushback": 110,
+        "chip": 0
+      },
+      "cancelTo": ["iria_gate", "iria_bolt", "iria_sevenfold"],
+      "hitEffect": "iria_hit_light",
+      "attackLevel": "light"
+    },
+    {
+      "id": "iria_heavy",
+      "name": "Staff Sweep",
+      "input": ["HEAVY"],
+      "startup": 14,
+      "active": [14, 17],
+      "recovery": 22,
+      "hitboxes": [{ "frame": 14, "shape": "box", "x": 200, "y": 80, "w": 1200, "h": 520 }],
+      "hurtbox": { "x": -480, "y": 0, "w": 960, "h": 1400 },
+      "hurtboxActiveOverride": {
+        "frames": [12, 17],
+        "box": { "x": -480, "y": 0, "w": 960, "h": 1100 }
+      },
+      "onHit": {
+        "damage": 82,
+        "hitStun": 24,
+        "blockStun": 14,
+        "meterGain": 10,
+        "fluxGain": 10,
+        "knockback": 320,
+        "knockbackX": 320,
+        "knockbackY": 80,
+        "launches": false,
+        "knockdown": true,
+        "cancelWindow": 0
+      },
+      "onBlock": {
+        "blockStun": 14,
+        "advantage": -8,
+        "pushback": 160,
+        "chip": 3
+      },
+      "cancelTo": [],
+      "hitEffect": "iria_hit_heavy",
+      "attackLevel": "heavy"
+    },
+    {
+      "id": "iria_air_light",
+      "name": "Crown Poke",
+      "input": ["LIGHT"],
+      "airOk": true,
+      "groundOk": false,
+      "startup": 7,
+      "active": [7, 10],
+      "recovery": 12,
+      "landCancel": true,
+      "hitboxes": [{ "frame": 7, "shape": "box", "x": 300, "y": -100, "w": 700, "h": 600 }],
+      "onHit": {
+        "damage": 40,
+        "hitStun": 14,
+        "blockStun": 10,
+        "meterGain": 4,
+        "fluxGain": 4,
+        "knockback": 90,
+        "knockbackX": 90,
+        "knockbackY": -40,
+        "launches": false,
+        "cancelWindow": 0
+      },
+      "onBlock": {
+        "blockStun": 10,
+        "advantage": -6,
+        "pushback": 70,
+        "chip": 0
+      },
+      "cancelTo": [],
+      "hitEffect": "iria_hit_light",
+      "attackLevel": "light"
+    }
+  ],
+  "specials": [
+    {
+      "id": "iria_gate",
+      "name": "Prism Gate",
+      "input": ["ABILITY_1"],
+      "startup": 10,
+      "active": [10, 10],
+      "recovery": 18,
+      "cooldown": 45,
+      "type": "projectile",
+      "subtype": "placeable_gate",
+      "meterCost": 0,
+      "resourceCost": { "prismCharges": 1 },
+      "maxLive": 2,
+      "gate": {
+        "delayTicks": 28,
+        "hp": 1,
+        "offsetForward": 1400,
+        "offsetUpForward": { "x": 1000, "y": 1200 },
+        "bolt": {
+          "speedX": 820,
+          "speedY": 0,
+          "lifetime": 50,
+          "damage": 38,
+          "hitStun": 14,
+          "blockStun": 8,
+          "fluxGain": 5,
+          "width": 180,
+          "height": 140,
+          "meterGainMult": 1.1
+        }
+      },
+      "projectileSpeed": 0,
+      "projectileLifetime": 28,
+      "damage": 38,
+      "hitEffect": "iria_gate_fire",
+      "description": "Spend 1 prism charge. Place a delayed prism that fires a bolt after 28f. Hold UP for up-forward placement. Destroyable. Max 2 live."
+    },
+    {
+      "id": "iria_ward",
+      "name": "Mirror Ward",
+      "input": ["ABILITY_2"],
+      "startup": 4,
+      "active": [4, 21],
+      "recovery": 16,
+      "cooldown": 90,
+      "type": "barrier",
+      "subtype": "projectile_reflect",
+      "meterCost": 0,
+      "damage": 0,
+      "ward": {
+        "reflectNonUltimate": true,
+        "reflectDamageMult": 0.7,
+        "meleeBreakChip": 12,
+        "maxReflects": 1
+      },
+      "hitEffect": "iria_ward",
+      "description": "18f active window after 4f startup. Reflects one non-ultimate projectile at 70% damage. Melee breaks ward for 12 chip."
+    }
+  ],
+  "ranged": {
+    "id": "iria_bolt",
+    "name": "Split Bolt",
+    "input": ["RANGED"],
+    "startup": 11,
+    "active": [11, 11],
+    "recovery": 16,
+    "ammoCost": 0,
+    "heatCost": 22,
+    "projectileSpeed": 780,
+    "projectileRange": 9000,
+    "projectileLifetime": 48,
+    "damage": 30,
+    "hitStun": 12,
+    "blockStun": 7,
+    "meterGain": 4,
+    "fluxGain": 4,
+    "width": 160,
+    "height": 120,
+    "gateBend": true,
+    "hitEffect": "iria_ranged_trail",
+    "onHit": {
+      "damage": 30,
+      "hitStun": 12,
+      "fluxGain": 4,
+      "knockbackX": 70
+    },
+    "onBlock": {
+      "blockStun": 7,
+      "advantage": -5,
+      "chip": 0
+    },
+    "cancelTo": [],
+    "projectile": {
+      "frame": 11,
+      "speedX": 780,
+      "speedY": 0,
+      "lifetime": 48,
+      "damage": 30,
+      "hitStun": 12,
+      "blockStun": 7,
+      "fluxGain": 4,
+      "width": 160,
+      "height": 120,
+      "maxActive": 2
+    }
+  },
+  "ultimate": {
+    "id": "iria_sevenfold",
+    "name": "Sevenfold Star",
+    "input": ["ULTIMATE"],
+    "startup": 8,
+    "active": [8, 14],
+    "recovery": 24,
+    "fizzleRecovery": 32,
+    "meterCost": 100,
+    "fluxCost": 100,
+    "requireConfirmOrGate": true,
+    "confirmWindowTicks": 20,
+    "hitbox": {
+      "shape": "circle",
+      "x": 0,
+      "y": 900,
+      "w": 1600,
+      "h": 1600,
+      "radius": 800
+    },
+    "onHit": {
+      "damage": 260,
+      "damagePerExtraCharge": 15,
+      "maxDamage": 310,
+      "hitStun": 36,
+      "meterGain": 0,
+      "fluxGain": 0,
+      "knockdown": true
+    },
+    "onBlock": {
+      "blockStun": 10,
+      "advantage": -12,
+      "chip": 0
+    },
+    "onFizzle": {
+      "damage": 80,
+      "recovery": 32,
+      "advantageOnBlock": -12
+    },
+    "cameraLock": 18,
+    "vfx": "iria_ultimate_effect",
+    "hitEffect": "iria_ultimate_effect",
+    "description": "Confirm-only constellation burst. Needs recent hit-confirm or a live Gate; else fizzles. Consumes prism charges for bonus damage (cap 310). Camera lock 18f."
+  },
+  "moves": [
+    {
+      "id": "iria_light_1",
+      "input": "LIGHT",
+      "startup": 5,
+      "active": [5, 7],
+      "recovery": 11,
+      "hitboxes": [{ "frame": 5, "shape": "box", "x": 420, "y": 900, "w": 720, "h": 360 }],
+      "hurtbox": { "x": -520, "y": 0, "w": 1040, "h": 1680 },
+      "onHit": {
+        "damage": 36,
+        "hitStun": 14,
+        "fluxGain": 4,
+        "knockbackX": 100,
+        "knockbackY": 0
+      },
+      "onBlock": { "blockStun": 9, "advantage": -2 },
+      "cancelTo": ["iria_light_2", "iria_heavy"]
+    },
+    {
+      "id": "iria_light_2",
+      "input": "LIGHT",
+      "startup": 6,
+      "active": [6, 9],
+      "recovery": 14,
+      "hitboxes": [{ "frame": 6, "shape": "box", "x": 380, "y": 700, "w": 860, "h": 520 }],
+      "hurtbox": { "x": -500, "y": 0, "w": 1000, "h": 1680 },
+      "onHit": {
+        "damage": 48,
+        "hitStun": 18,
+        "fluxGain": 6,
+        "knockbackX": 120,
+        "knockbackY": 280
+      },
+      "onBlock": { "blockStun": 11, "advantage": -4 },
+      "cancelTo": ["iria_gate", "iria_bolt"]
+    },
+    {
+      "id": "iria_heavy",
+      "input": "HEAVY",
+      "startup": 14,
+      "active": [14, 17],
+      "recovery": 22,
+      "hitboxes": [{ "frame": 14, "shape": "box", "x": 200, "y": 80, "w": 1200, "h": 520 }],
+      "hurtbox": { "x": -480, "y": 0, "w": 960, "h": 1400 },
+      "onHit": {
+        "damage": 82,
+        "hitStun": 24,
+        "fluxGain": 10,
+        "knockbackX": 320,
+        "knockbackY": 80
+      },
+      "onBlock": { "blockStun": 14, "advantage": -8, "chip": 3 },
+      "cancelTo": []
+    },
+    {
+      "id": "iria_bolt",
+      "input": "RANGED",
+      "startup": 11,
+      "active": [11, 11],
+      "recovery": 16,
+      "hitboxes": [],
+      "hurtbox": { "x": -520, "y": 0, "w": 1040, "h": 1680 },
+      "onHit": { "damage": 30, "hitStun": 12, "fluxGain": 4 },
+      "onBlock": { "blockStun": 7, "advantage": -5 },
+      "cancelTo": [],
+      "projectile": {
+        "frame": 11,
+        "speedX": 780,
+        "speedY": 0,
+        "lifetime": 48,
+        "damage": 30,
+        "hitStun": 12,
+        "blockStun": 7,
+        "fluxGain": 4,
+        "width": 160,
+        "height": 120,
+        "maxActive": 2
+      }
+    },
+    {
+      "id": "iria_spell",
+      "input": "SPELL",
+      "startup": 10,
+      "active": [10, 16],
+      "recovery": 18,
+      "hitboxes": [{ "frame": 10, "shape": "box", "x": 900, "y": 400, "w": 500, "h": 900 }],
+      "hurtbox": { "x": -520, "y": 0, "w": 1040, "h": 1680 },
+      "onHit": {
+        "damage": 38,
+        "hitStun": 14,
+        "fluxGain": 5,
+        "knockbackX": 100,
+        "knockbackY": 40
+      },
+      "onBlock": { "blockStun": 8, "advantage": -6, "chip": 2 },
+      "cancelTo": [],
+      "fluxCost": 0
+    }
+  ],
+  "animations": {
+    "idle": "idle_iria",
+    "walk": "walk_iria",
+    "dash": "dash_iria",
+    "jump": "jump_iria",
+    "land": "land_iria",
+    "crouch": "crouch_iria",
+    "block": "block_iria",
+    "hitStun": "hitstun_iria",
+    "knockdown": "knockdown_iria",
+    "wakeup": "wakeup_iria",
+    "normal_light_1": "light_1_iria",
+    "normal_light_2": "light_2_iria",
+    "normal_heavy": "heavy_iria",
+    "normal_air_light": "air_light_iria",
+    "ranged": "ranged_iria",
+    "ability_1": "ability_1_iria",
+    "ability_2": "ability_2_iria",
+    "ultimate": "ultimate_iria",
+    "win": "win_iria",
+    "lose": "lose_iria",
+    "gate_idle": "gate_idle",
+    "gate_fire": "gate_fire",
+    "gate_break": "gate_break"
+  },
+  "audio": {
+    "voiceLines": {
+      "select": "iria_select",
+      "roundStart": ["iria_round_start_1", "iria_round_start_2"],
+      "hit": ["iria_hit_1", "iria_hit_2", "iria_hit_3"],
+      "heavy": "iria_heavy_vo",
+      "gate": "iria_gate_vo",
+      "ward": "iria_ward_vo",
+      "ultimate": "iria_ultimate",
+      "win": "iria_win",
+      "lose": "iria_lose",
+      "lowHp": "iria_low_hp"
+    },
+    "sfx": {
+      "light_1": "iria_light_1_sfx",
+      "light_2": "iria_light_2_sfx",
+      "heavy": "iria_heavy_sfx",
+      "ranged": "iria_ranged_sfx",
+      "ability_1": "iria_ability_1_sfx",
+      "ability_2": "iria_ability_2_sfx",
+      "ultimate": "iria_ultimate_sfx",
+      "gate_hum": "iria_gate_hum_loop",
+      "gate_break": "iria_gate_break_sfx",
+      "ward_reflect": "iria_ward_reflect_sfx",
+      "block": "iria_block_crystal_sfx"
+    }
+  },
+  "vfx": {
+    "hit_light": "iria_hit_light",
+    "hit_heavy": "iria_hit_heavy",
+    "hit_ability": "iria_hit_ability",
+    "ranged": "iria_ranged_trail",
+    "ability_1": "iria_ability_1_effect",
+    "ability_2": "iria_ability_2_effect",
+    "ultimate": "iria_ultimate_effect",
+    "gate_idle": "iria_gate_idle",
+    "gate_fire": "iria_gate_fire",
+    "dash_dust": "iria_dash_prism",
+    "meter_glow": "iria_staff_crystal_glow"
+  },
+  "balance": {
+    "maxBnBDamage": 286,
+    "maxConfirmIntoUlt": 310,
+    "avgTtkSeconds": 28,
+    "minStartupFrames": 4,
+    "juggleBudgetHits": 3
+  }
+}

@@ -68,6 +68,7 @@ export type { ValidationIssue } from './validate.js';
 export {
   NYRA_VEX,
   BRAM_KADE,
+  IRIA_SOL,
   FIGHTER_KITS,
   getKit,
   getMove,

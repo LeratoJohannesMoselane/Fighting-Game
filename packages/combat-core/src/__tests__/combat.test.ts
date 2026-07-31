@@ -14,9 +14,13 @@ function closeRange(seed = 21) {
   return closeRangeState(seed);
 }
 
+/** Greybox duel roster currently spawned by createInitialState (P1 Nyra, P2 Bram). */
+const ACTIVE_DUEL_FIGHTERS = new Set(['nyra_vex', 'bram_kade']);
+
 function allMoves(): { fighterId: string; move: MoveData }[] {
   const out: { fighterId: string; move: MoveData }[] = [];
   for (const id of Object.keys(FIGHTER_KITS)) {
+    if (!ACTIVE_DUEL_FIGHTERS.has(id)) continue;
     const kit = FIGHTER_KITS[id]!;
     for (const move of kit.moves) {
       out.push({ fighterId: id, move });

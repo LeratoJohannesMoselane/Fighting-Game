@@ -185,9 +185,81 @@ export const BRAM_KADE: FighterKit = {
   ],
 };
 
+/**
+ * Iria Sol — Prism Magus (zoner / setup).
+ * Full production data: packages/content/fighters/iria_sol.json
+ * Greybox kit below maps to current CombatCore MoveData (Gate/Ward full FSM = next content spike).
+ */
+export const IRIA_SOL: FighterKit = {
+  id: 'iria_sol',
+  name: 'Iria Sol',
+  version: '1.0.0',
+  base: {
+    hp: 920,
+    walk: 245,
+    jumpVelocity: 740,
+    dashSpeed: 620,
+    weight: 900,
+  },
+  moves: [
+    {
+      id: 'iria_light_1',
+      input: 'LIGHT',
+      startup: 5,
+      active: [5, 7],
+      recovery: 11,
+      hitboxes: [{ frame: 5, shape: 'box', x: 420, y: 900, w: 720, h: 360 }],
+      hurtbox: { x: -520, y: 0, w: 1040, h: 1680 },
+      onHit: { damage: 36, hitStun: 14, fluxGain: 4, knockbackX: 100, knockbackY: 0 },
+      onBlock: { blockStun: 9, advantage: -2 },
+      cancelTo: ['iria_light_2', 'iria_heavy'],
+    },
+    {
+      id: 'iria_light_2',
+      input: 'LIGHT',
+      startup: 6,
+      active: [6, 9],
+      recovery: 14,
+      hitboxes: [{ frame: 6, shape: 'box', x: 380, y: 700, w: 860, h: 520 }],
+      hurtbox: { x: -500, y: 0, w: 1000, h: 1680 },
+      onHit: { damage: 48, hitStun: 18, fluxGain: 6, knockbackX: 120, knockbackY: 280 },
+      onBlock: { blockStun: 11, advantage: -4 },
+      cancelTo: ['iria_spell', 'iria_bolt'],
+    },
+    {
+      id: 'iria_heavy',
+      input: 'HEAVY',
+      startup: 14,
+      active: [14, 17],
+      recovery: 22,
+      hitboxes: [{ frame: 14, shape: 'box', x: 200, y: 80, w: 1200, h: 520 }],
+      hurtbox: { x: -480, y: 0, w: 960, h: 1400 },
+      onHit: { damage: 82, hitStun: 24, fluxGain: 10, knockbackX: 320, knockbackY: 80 },
+      onBlock: { blockStun: 14, advantage: -8, chip: 3 },
+      cancelTo: [],
+    },
+    gunMove('iria_bolt', {
+      damage: 30,
+      speedX: 780,
+      startup: 11,
+      recovery: 16,
+      lifetime: 48,
+    }),
+    // Prism Gate stand-in: mid-range delayed geometry hit (full gate FSM in content JSON).
+    spellMove('iria_spell', {
+      damage: 38,
+      startup: 10,
+      active: [10, 16],
+      recovery: 18,
+      hitbox: { x: 900, y: 400, w: 500, h: 900 },
+    }),
+  ],
+};
+
 export const FIGHTER_KITS: Readonly<Record<string, FighterKit>> = {
   nyra_vex: NYRA_VEX,
   bram_kade: BRAM_KADE,
+  iria_sol: IRIA_SOL,
 };
 
 export function getKit(id: string): FighterKit {
