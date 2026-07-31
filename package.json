@@ -1,0 +1,30 @@
+{
+  "name": "aether-break",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @aether-break/web dev",
+    "build": "pnpm -r run build",
+    "test": "pnpm --filter @aether-break/combat-core test",
+    "typecheck": "pnpm -r run typecheck",
+    "lint": "pnpm -r run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,yml,yaml,html,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,yml,yaml,html,css}\"",
+    "test:determinism": "pnpm --filter @aether-break/combat-core test:determinism",
+    "replay": "pnpm --filter @aether-break/combat-core replay",
+    "prepare": "node scripts/install-hooks.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "eslint": "9.17.0",
+    "prettier": "3.4.2",
+    "typescript": "5.5.4",
+    "typescript-eslint": "8.18.1",
+    "vitest": "2.1.8"
+  }
+}

@@ -1,87 +1,118 @@
-# ⚔️ Aether Break
+# Aether Break
 
-**A professional 2.5D 3D browser fighting game** built following the full SRS specification.
+Skill-forward **2.5D browser arena fighter** — Milestone 1 greybox vertical slice foundation.
 
-Fast, readable, skill-based duels with guns, magic, and powerful ultimates.
+> Two greybox fighters, one lane, local 1v1 duel, **60 Hz CombatCore**, 60 FPS target later.  
+> No online promise until fun is proven. (SRS §9.1)
 
----
+## Repository layout (SRS §5.3)
 
-## ✨ Features
+```
+aether-break/
+  apps/
+    web/                 # Vite + TS placeholder ("boot OK") — no React/Babylon yet
+  packages/
+    combat-core/         # pure deterministic 60 Hz simulation (THIS milestone's focus)
+    config/              # shared tsconfig, eslint, vitest preset
+  docs/
+    ADR-0001-legacy-archive.md
+    ADR-0002-determinism-contract.md
+  scripts/               # git hooks installer
+  legacy/                # archived pre-SRS prototype (do not import)
+  SRS ether arena.pdf    # authoritative SRS v1.0
+```
 
-- **4 Unique Fighters** (Nyra Vex, Bram Kade + ready for Iria & Kellan)
-- **Real Guns + Magic** with cooldowns and heat systems
-- **Best of 3 Rounds** — long, entertaining matches
-- **Smart AI Opponent** (adjustable difficulty)
-- **Professional 3D Graphics** with Babylon.js
-- **glTF + Animation Support** (Ready Player Me / Mixamo ready)
-- **Deterministic 60 Hz Combat Core** (rollback-ready)
-- **Immersive Animated Background** with living effects
+## Prerequisites
 
----
-
-## 🚀 How to Install & Run
+- **Node.js 22+**
+- **pnpm 9.15.0** (via Corepack)
 
 ```bash
-# 1. Navigate to the project
-cd /home/user/Fighting-Game
-
-# 2. Install dependencies
-npm install
-
-# 3. Start the development server
-npm run dev
+corepack enable
+corepack prepare pnpm@9.15.0 --activate
 ```
 
-Then open the link shown in your terminal (usually `http://localhost:5173/`).
+## Setup
 
----
-
-## 🎮 Controls
-
-| Player | Move       | Jump | Light | Heavy | Gun | Magic | Ultimate | Guard   |
-|--------|------------|------|-------|-------|-----|-------|----------|---------|
-| **P1** | `A` / `D`  | `W`  | `J`   | `K`   | `L` | `U`   | `O`      | `Shift` |
-| **P2** | AI         | AI   | AI    | AI    | AI  | AI    | AI       | AI      |
-
-- Press **`R`** to restart after a match ends.
-
----
-
-## 🧠 AI Difficulty
-
-The AI is set to **normal** by default. You can change it in `src/main.js`:
-
-```js
-let ai = new AIController('normal');   // 'easy', 'normal', or 'hard'
+```bash
+pnpm install
 ```
 
----
+## Scripts
 
-## 🖼️ Adding Real 3D Characters (Optional)
+| Command | Purpose |
+|---------|---------|
+| `pnpm dev` | Start `apps/web` Vite dev server |
+| `pnpm build` | Build all packages/apps |
+| `pnpm test` | Run CombatCore Vitest suite |
+| `pnpm typecheck` | Strict TypeScript across workspaces |
+| `pnpm lint` | ESLint 9 flat config |
+| `pnpm format` / `pnpm format:check` | Prettier write / check |
+| `pnpm test:determinism` | 10 000-frame dual-run hash identity gate |
+| `pnpm replay` | CLI: `pnpm replay -- --seed 42 --frames 10000` |
 
-Place your `.glb` files here:
+Pre-commit hook (installed on `pnpm install` via `prepare`): typecheck + lint + format:check + test.
 
+## CombatCore (`@aether-break/combat-core`)
+
+Pure ESM TypeScript. **Zero runtime dependencies.**
+
+```ts
+import {
+  createInitialState,
+  step,
+  getStateHash,
+  emptyActions,
+} from '@aether-break/combat-core';
+
+let state = createInitialState({ seed: 42 });
+state = step(state, {
+  p1: { ...emptyActions(), right: true, light: true },
+  p2: { ...emptyActions(), guard: true },
+});
+console.log(getStateHash(state));
 ```
-public/assets/nyra.glb
-public/assets/bram.glb
-```
 
-The game will automatically load and animate them using the built-in animation system.
+### Hard boundary (SRS §5.3)
 
----
+Must not use: `Date`, `Math.random`, `performance`, `fetch`, `WebSocket`, DOM/browser globals, Node `fs`/`process` (except tests/scripts), Babylon, React, Web Audio.
 
-## 🏗️ Tech Stack
+Enforced by ESLint restricted globals/imports **and** `src/__tests__/purity.test.ts`.
 
-- **Babylon.js** — 3D rendering & animation
-- **Vite** — Fast development
-- **Deterministic CombatCore** — Pure JS 60Hz simulation
+### Determinism contract
 
----
+See [docs/ADR-0002-determinism-contract.md](docs/ADR-0002-determinism-contract.md):
 
-## 📜 License
+- `TICK_RATE = 60`, fixed-point ×1000, Park–Miller LCG
+- Pure `step` + canonical JSON snapshots + FNV-1a `getStateHash`
 
-This project follows the Aether Break SRS v1.0.
+### Greybox roster
 
----
+| Slot | Fighter | Kit highlights |
+|------|---------|----------------|
+| P1 | Nyra Vex | Walk 286, light/heavy, arc gun, spell |
+| P2 | Bram Kade | Walk 220, light/heavy, scattergun, furnace spell |
 
-**Made with ❤️ for competitive browser gaming.**
+Move baselines from SRS §7.2 sample (light: startup 6, active 6–8, recovery 12, damage 42).
+
+## Documentation
+
+- [ADR-0001 — Legacy archive](docs/ADR-0001-legacy-archive.md)
+- [ADR-0002 — Determinism contract](docs/ADR-0002-determinism-contract.md)
+- `SRS ether arena.pdf` — full product/requirements spec
+- `legacy/README.md` — out-of-scope prototype note
+
+## Milestone status
+
+| Area | Status |
+|------|--------|
+| Monorepo scaffold | ✅ |
+| CombatCore v0 + tests | ✅ |
+| Web placeholder | ✅ |
+| Renderer / Babylon | ⏳ deferred |
+| Online / rollback wire-up | ⏳ deferred |
+| Full move set / ultimates | ⏳ deferred |
+
+## License
+
+Project follows the Aether Break SRS v1.0. Original concept — no licensed Street Fighter assets or names.
