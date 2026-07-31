@@ -33,6 +33,71 @@ platform.position.y = 0.65;
 platform.material = new StandardMaterial("platMat", scene);
 platform.material.diffuseColor = new Color3(0.15, 0.07, 0.28);
 
+// === LIVING ANIMATED BACKGROUND ===
+function createLivingBackground() {
+    // Floating Ether Crystals (animated)
+    for (let i = 0; i < 6; i++) {
+        const crystal = MeshBuilder.CreateCylinder(`crystal_${i}`, {
+            height: 2.8, diameterTop: 0.35, diameterBottom: 0.55, tessellation: 6
+        }, scene);
+        
+        const mat = new StandardMaterial(`crystalMat_${i}`, scene);
+        mat.diffuseColor = new Color3(0, 0.9, 0.7);
+        mat.emissiveColor = new Color3(0, 0.6, 0.5);
+        crystal.material = mat;
+        
+        crystal.position.x = -10 + (i * 4);
+        crystal.position.y = 3.5 + Math.sin(i) * 1.5;
+        crystal.position.z = -4 + (i % 2) * 1.5;
+        
+        // Gentle floating animation
+        scene.registerBeforeRender(() => {
+            crystal.position.y = 3.5 + Math.sin(Date.now() / 800 + i) * 1.2;
+            crystal.rotation.y = Date.now() / 1200 + i;
+        });
+    }
+
+    // Pulsing Energy Orbs
+    for (let i = 0; i < 4; i++) {
+        const orb = MeshBuilder.CreateSphere(`orb_${i}`, { diameter: 1.1 }, scene);
+        const mat = new StandardMaterial(`orbMat_${i}`, scene);
+        mat.diffuseColor = new Color3(0.3, 0.9, 1);
+        mat.emissiveColor = new Color3(0.2, 0.7, 1);
+        orb.material = mat;
+        
+        orb.position.x = -8 + i * 5.5;
+        orb.position.y = 7.5;
+        orb.position.z = 6;
+        
+        scene.registerBeforeRender(() => {
+            const scale = 0.9 + Math.sin(Date.now() / 600 + i * 2) * 0.25;
+            orb.scaling = new Vector3(scale, scale, scale);
+        });
+    }
+
+    // Background Light Beams (moving)
+    const beamMat = new StandardMaterial("beamMat", scene);
+    beamMat.diffuseColor = new Color3(0.4, 0.6, 1);
+    beamMat.emissiveColor = new Color3(0.2, 0.4, 0.9);
+    beamMat.alpha = 0.25;
+
+    for (let i = 0; i < 3; i++) {
+        const beam = MeshBuilder.CreateCylinder(`beam_${i}`, {
+            height: 18, diameter: 0.8, tessellation: 12
+        }, scene);
+        beam.material = beamMat;
+        beam.position.x = -7 + i * 7;
+        beam.position.y = 9;
+        beam.rotation.z = 0.6;
+
+        scene.registerBeforeRender(() => {
+            beam.rotation.z = 0.6 + Math.sin(Date.now() / 1800 + i) * 0.15;
+        });
+    }
+}
+
+createLivingBackground();
+
 // Fallback fighter
 function createFallbackFighter(name, color) {
     const group = new MeshBuilder.CreateBox(name+"_root", {size:0.1}, scene);
