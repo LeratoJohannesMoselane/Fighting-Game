@@ -85,3 +85,9 @@ This project follows the Aether Break SRS v1.0.
 ---
 
 **Made with ❤️ for competitive browser gaming.**
+
+---
+
+## 🗺️ Project Management
+
+- **[Greybox Build Plan & Prompt Series](docs/GREYBOX_BUILD_PLAN.md)** — Milestone 1 decomposition, the copy-paste prompt chain, and the exit gate for the vertical slice.
