@@ -14,3 +14,8 @@ coverage/
 .pnpm-store/
 apps/web/dist/
 packages/*/dist/
+
+# Downloaded animation packs (CC0, but fetch them yourself — see
+# packages/babylon-humanoid/demo/public/animations/README.md)
+packages/babylon-humanoid/demo/public/animations/*.glb
+packages/babylon-humanoid/demo/public/animations/*.gltf
