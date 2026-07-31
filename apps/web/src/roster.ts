@@ -58,11 +58,44 @@ export const ROSTER: readonly CharacterMeta[] = [
 
 export type OpponentMode = 'cpu' | 'human';
 
+/** High-level game mode chosen in the menu system. */
+export type GameMode = 'versus' | 'cpu' | 'arcade' | 'training';
+
+export interface TrainingOptions {
+  /** Dummy behavior: stands still, holds guard, or fights back as CPU. */
+  dummy: 'stand' | 'guard' | 'cpu';
+}
+
 export interface MatchConfig {
   p1Id: string;
   p2Id: string;
   opponentMode: OpponentMode;
   cpuDifficulty: 'easy' | 'normal' | 'hard';
+  /** Defaults to 'versus' (human) or 'cpu' based on opponentMode. */
+  mode?: GameMode;
+  /** Training-session options (mode === 'training'). */
+  training?: TrainingOptions;
+  /** Arcade stage (1-based) for banners/records (mode === 'arcade'). */
+  arcadeStage?: number;
+}
+
+export interface ArcadeStage {
+  p2Id: string;
+  difficulty: 'easy' | 'normal' | 'hard';
+  title: string;
+}
+
+/** 5-match arcade ladder with a difficulty ramp. */
+export const ARCADE_LADDER: readonly ArcadeStage[] = [
+  { p2Id: 'bram_kade', difficulty: 'easy', title: 'STAGE 1 · FORGE GATE' },
+  { p2Id: 'iria_sol', difficulty: 'normal', title: 'STAGE 2 · PRISM HALL' },
+  { p2Id: 'kellan_wisp', difficulty: 'normal', title: 'STAGE 3 · STORM SPAN' },
+  { p2Id: 'nyra_vex', difficulty: 'hard', title: 'STAGE 4 · RIFT TERMINUS' },
+  { p2Id: 'bram_kade', difficulty: 'hard', title: 'FINAL STAGE · ETHER THRONE' },
+];
+
+export function arcadeStage(index: number): ArcadeStage {
+  return ARCADE_LADDER[index % ARCADE_LADDER.length]!;
 }
 
 export function getMeta(id: string): CharacterMeta {
@@ -77,5 +110,6 @@ export function defaultMatchConfig(): MatchConfig {
     p2Id: 'bram_kade',
     opponentMode: 'cpu',
     cpuDifficulty: 'normal',
+    mode: 'cpu',
   };
 }

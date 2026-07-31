@@ -7,7 +7,7 @@
 import type { FighterState } from '@aether-break/combat-core';
 import { fromFp } from '@aether-break/combat-core';
 import { resolveFighterAnimation, type ResolvedAnim } from './animation';
-import { getVisualProfile } from './profiles';
+import { profileWithColorway } from './colorways';
 import type { BodyPartDef, BoneId, BonePose, FighterVisualProfile, PoseMap } from './types';
 
 export interface BoneWorld {
@@ -83,13 +83,13 @@ export class ProceduralFighterMesh {
   /** 0–1 flash white on hitstop */
   hitFlash = 0;
 
-  constructor(fighterId: string) {
+  constructor(fighterId: string, colorway = 'classic') {
     this.fighterId = fighterId;
-    this.profile = getVisualProfile(fighterId);
+    this.profile = profileWithColorway(fighterId, colorway);
   }
 
-  static generate(fighterId: string): ProceduralFighterMesh {
-    return new ProceduralFighterMesh(fighterId);
+  static generate(fighterId: string, colorway = 'classic'): ProceduralFighterMesh {
+    return new ProceduralFighterMesh(fighterId, colorway);
   }
 
   update(fighter: FighterState, presentTick: number, frozen = false): ResolvedAnim {
@@ -186,7 +186,7 @@ export class ProceduralFighterMesh {
     ctx.fill();
 
     // Ground ink ring (SF stage readability)
-    ctx.strokeStyle = `${this.profile.emission}44`;
+    ctx.strokeStyle = withAlpha(this.profile.emission, 0x44 / 0xff);
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.ellipse(0, 3, 36 * this.profile.width, 9, 0, 0, Math.PI * 2);
@@ -260,8 +260,8 @@ export class ProceduralFighterMesh {
       part.x + part.w * 0.6,
       part.y + part.h * 0.4,
     );
-    hg.addColorStop(0, `${hi}CC`);
-    hg.addColorStop(0.5, `${hi}00`);
+    hg.addColorStop(0, withAlpha(hi, 0xcc / 0xff));
+    hg.addColorStop(0.5, withAlpha(hi, 0));
     ctx.fillStyle = hg;
     ctx.fillRect(part.x, part.y, part.w * 0.7, part.h * 0.5);
     ctx.restore();
@@ -276,8 +276,8 @@ export class ProceduralFighterMesh {
       part.x + part.w,
       part.y + part.h,
     );
-    rg.addColorStop(0, `${rim}00`);
-    rg.addColorStop(1, `${rim}AA`);
+    rg.addColorStop(0, withAlpha(rim, 0));
+    rg.addColorStop(1, withAlpha(rim, 0xaa / 0xff));
     ctx.fillStyle = rg;
     ctx.fillRect(part.x + part.w * 0.55, part.y, part.w * 0.5, part.h);
     ctx.restore();
@@ -414,14 +414,49 @@ function mixHex(a: string, b: string, t: number): string {
 }
 
 function parseHex(hex: string): { r: number; g: number; b: number } {
+  // Accept rgb()/rgba() as produced by rgb()/darken()/lighten()/mixHex().
+  const m = /rgba?\(\s*(\d{1,3})\s*[, ]\s*(\d{1,3})\s*[, ]\s*(\d{1,3})/.exec(hex);
+  if (m) {
+    return {
+      r: clamp255(Number(m[1])),
+      g: clamp255(Number(m[2])),
+      b: clamp255(Number(m[3])),
+    };
+  }
   let h = hex.replace('#', '');
-  if (h.length === 3) h = h[0]! + h[0] + h[1] + h[1] + h[2] + h[2];
+  if (h.length === 3 || h.length === 4) {
+    h = h[0]! + h[0] + h[1] + h[1] + h[2] + h[2];
+  }
   if (h.length < 6) return { r: 128, g: 128, b: 128 };
   return {
     r: parseInt(h.slice(0, 2), 16) || 0,
     g: parseInt(h.slice(2, 4), 16) || 0,
     b: parseInt(h.slice(4, 6), 16) || 0,
   };
+}
+
+/**
+ * Append an alpha channel to any supported color string.
+ * Hex stays hex (`#rrggbbaa`); rgb()/rgba() becomes rgba().
+ * Never emits invalid strings — safe for addColorStop.
+ */
+function withAlpha(color: string, alpha: number): string {
+  const a = Math.max(0, Math.min(1, alpha));
+  if (color.startsWith('#')) {
+    let h = color.slice(1);
+    if (h.length === 3 || h.length === 4) {
+      h = h[0]! + h[0] + h[1] + h[1] + h[2] + h[2];
+    } else if (h.length >= 6) {
+      h = h.slice(0, 6); // strip any existing alpha
+    }
+    if (h.length !== 6 || /[^0-9a-fA-F]/.test(h)) return color;
+    const ah = Math.round(a * 255)
+      .toString(16)
+      .padStart(2, '0');
+    return `#${h}${ah}`;
+  }
+  const { r, g, b } = parseHex(color);
+  return `rgba(${r},${g},${b},${a.toFixed(3)})`;
 }
 
 function rgb(r: number, g: number, b: number): string {

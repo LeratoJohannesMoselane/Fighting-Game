@@ -15,6 +15,8 @@ export interface HudMeta {
   p2Name: string;
   opponentMode: 'cpu' | 'human';
   cpuDifficulty?: string;
+  /** Game mode — training shows an infinite timer. */
+  mode?: 'versus' | 'cpu' | 'arcade' | 'training';
 }
 
 function winsDots(wins: number): string {
@@ -99,11 +101,22 @@ export class Hud {
       this.lastComboCallout = '';
     }
 
+    const isTraining = info?.mode === 'training';
     const secs = Math.ceil(state.timer / TICK_RATE);
-    this.timer.textContent = String(Math.max(0, secs));
+    this.timer.textContent = isTraining ? '∞' : String(Math.max(0, secs));
+    this.timer.style.color = isTraining ? 'var(--ae-blue, #00d2ff)' : '';
 
-    const modeBit = info?.opponentMode === 'cpu' ? `CPU ${info.cpuDifficulty ?? ''}`.trim() : '2P';
-    this.meta.textContent = `Round ${state.round} · BEST OF 3 · ${modeBit} · tick ${state.tick}`;
+    const modeBit =
+      info?.mode === 'training'
+        ? 'TRAINING'
+        : info?.mode === 'arcade'
+          ? 'ARCADE'
+          : info?.opponentMode === 'cpu'
+            ? `CPU ${info.cpuDifficulty ?? ''}`.trim()
+            : '2P';
+    this.meta.textContent = isTraining
+      ? `TRAINING · ${modeBit} · tick ${state.tick}`
+      : `Round ${state.round} · BEST OF 3 · ${modeBit} · tick ${state.tick}`;
 
     let banner = '';
     if (paused) banner = 'PAUSED';
