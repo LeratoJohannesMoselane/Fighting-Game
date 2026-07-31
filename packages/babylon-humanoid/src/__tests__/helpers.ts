@@ -18,6 +18,9 @@ import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData';
 import { VertexBuffer } from '@babylonjs/core/Buffers/buffer';
 import { CreateBoxVertexData } from '@babylonjs/core/Meshes/Builders/boxBuilder';
 import { GLTF2Export } from '@babylonjs/serializers/glTF/2.0';
+import { LoadAssetContainerAsync } from '@babylonjs/core/Loading/sceneLoader';
+import { CreateSphereVertexData } from '@babylonjs/core/Meshes/Builders/sphereBuilder';
+import '@babylonjs/loaders/glTF/2.0';
 
 import {
   HUMANOID_ORDER,
@@ -316,6 +319,66 @@ export async function buildSourceGlb(
   const blob = exported.glTFFiles['source.glb'] as Blob;
   const buf = Buffer.from(await blob.arrayBuffer());
 
+  scene.dispose();
+  engine.dispose();
+  return 'data:base64,' + buf.toString('base64');
+}
+
+/**
+ * Build a `.gltf` (JSON) source with its buffer inlined as a data URI — the
+ * in-memory equivalent of the pack's `.gltf` + `.bin` pairs, which lets tests
+ * exercise the JSON glTF path without a web server.
+ */
+export async function buildGltfModel(scheme: NamingScheme): Promise<string> {
+  const glb = await buildModelGlb(scheme);
+
+  const engine = new NullEngine();
+  const scene = new Scene(engine);
+  const container = await LoadAssetContainerAsync(glb, scene, { pluginExtension: '.glb' });
+  container.addAllToScene();
+
+  const exported = await GLTF2Export.GLTFAsync(scene, 'Superhero_Female_FullBody');
+  const files = exported.glTFFiles;
+
+  let gltfText = '';
+  let binB64 = '';
+  let binName = '';
+  for (const [name, data] of Object.entries(files)) {
+    const buf =
+      typeof data === 'string'
+        ? Buffer.from(data)
+        : Buffer.from(await (data as Blob).arrayBuffer());
+    if (name.endsWith('.gltf')) gltfText = buf.toString('utf8');
+    else if (name.endsWith('.bin')) {
+      binName = name;
+      binB64 = buf.toString('base64');
+    }
+  }
+  scene.dispose();
+  engine.dispose();
+
+  const json = JSON.parse(gltfText) as { buffers?: Array<{ uri?: string }> };
+  for (const b of json.buffers ?? []) {
+    if (b.uri === binName) b.uri = 'data:application/octet-stream;base64,' + binB64;
+  }
+  return 'data:' + JSON.stringify(json);
+}
+
+/** A hair-style style asset: geometry only, no skeleton. */
+export async function buildHairGltf(name = 'Hair_Long'): Promise<string> {
+  const engine = new NullEngine();
+  const scene = new Scene(engine);
+
+  const mesh = new Mesh(name, scene);
+  const sphere = CreateSphereVertexData({ diameterX: 0.26, diameterY: 0.2, diameterZ: 0.26 });
+  const vd = new VertexData();
+  vd.positions = sphere.positions as number[];
+  vd.normals = sphere.normals as number[];
+  vd.indices = sphere.indices as number[];
+  vd.applyToMesh(mesh, true);
+
+  const exported = await GLTF2Export.GLBAsync(scene, name);
+  const buf = Buffer.from(await (exported.glTFFiles[`${name}.glb`] as Blob).arrayBuffer());
   scene.dispose();
   engine.dispose();
   return 'data:base64,' + buf.toString('base64');

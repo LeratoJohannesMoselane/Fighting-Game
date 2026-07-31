@@ -40,6 +40,10 @@ export {
 export type { LoadedClip, LoadClipOptions } from './animationLibrary';
 
 export { createFighterFactory } from './fighterRig';
+export { createAetherRoster, placeFighters, AETHER_CHARACTERS } from './aetherRoster';
+export type { AetherCharacter, AetherFighter, AetherRosterOptions, BodyType } from './aetherRoster';
+export { attachToHead, HAIRSTYLES, EYEBROWS } from './hairAttachment';
+export type { Hairstyle, Eyebrows, HeadAttachment, AttachOptions } from './hairAttachment';
 export {
   createRoster,
   applyStyle,
