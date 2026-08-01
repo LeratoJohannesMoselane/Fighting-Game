@@ -15,9 +15,8 @@ coverage/
 apps/web/dist/
 packages/*/dist/
 
-# Downloaded Quaternius assets (CC0, but fetch them yourself — see
-# packages/babylon-humanoid/demo/public/characters/README.md)
-packages/babylon-humanoid/demo/public/characters/**/*.glb
-packages/babylon-humanoid/demo/public/characters/**/*.gltf
-packages/babylon-humanoid/demo/public/characters/**/*.bin
-packages/babylon-humanoid/demo/public/characters/**/*.png
+# Downloaded Quaternius assets (CC0) — now included in repo
+# packages/babylon-humanoid/demo/public/characters/**/*.glb
+# packages/babylon-humanoid/demo/public/characters/**/*.gltf
+# packages/babylon-humanoid/demo/public/characters/**/*.bin
+# packages/babylon-humanoid/demo/public/characters/**/*.png
