@@ -56,8 +56,8 @@ async function discoverGltfNames(base: string): Promise<string[]> {
 }
 
 const BODY_FILES = {
-  female: 'Superhero_Female_FullBody',
-  male: 'Superhero_Male_FullBody',
+  female: 'Mannequin_F',
+  male: 'Mannequin_F',
 } as const;
 
 const HAIR_FILES = [
