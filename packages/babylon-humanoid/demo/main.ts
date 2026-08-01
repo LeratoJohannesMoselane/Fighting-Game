@@ -45,6 +45,16 @@ const LIBRARY_URL = '/characters/animations/UAL2_Standard.glb';
  * Files the demo needs. The pack ships .gltf, but .glb works identically, so
  * each entry is probed with both extensions and whichever exists is used.
  */
+async function discoverGltfNames(base: string): Promise<string[]> {
+  try {
+    const res = await fetch(base, { method: 'GET' });
+    if (!res.ok) return [];
+    const html = await res.text();
+    const names = [...html.matchAll(/href="([^"]+\.gltf)"/g)].map(m => m[1].replace(/\?.*$/, ''));
+    return [...new Set(names)];
+  } catch { return []; }
+}
+
 const BODY_FILES = {
   female: 'Superhero_Female_FullBody',
   male: 'Superhero_Male_FullBody',
@@ -145,13 +155,30 @@ async function findAsset(base: string, name: string): Promise<string | null> {
 async function boot(): Promise<void> {
   setLog('Checking assets…');
 
-  const female = await findAsset(BODIES_URL, BODY_FILES.female);
-  const male = await findAsset(BODIES_URL, BODY_FILES.male);
+  let discovered = await discoverGltfNames(BODIES_URL);
+  let femaleName = BODY_FILES.female;
+  let maleName = BODY_FILES.male;
+  if (discovered.length > 0) {
+    femaleName = discovered[0].replace('.gltf','');
+    maleName = discovered.length > 1 ? discovered[1].replace('.gltf','') : femaleName;
+  } else {
+    // Fallback: try common custom character names + original Quaternius names
+    const candidates = ['Cleric', 'Monk', 'Ranger', 'Rogue', 'Warrior', 'Wizard', 'Superhero_Female_FullBody', 'Superhero_Male_FullBody'];
+    for (const c of candidates) {
+      if (await exists(`${BODIES_URL}${c}.gltf`) || await exists(`${BODIES_URL}${c}.glb`)) {
+        femaleName = c;
+        maleName = c;
+        break;
+      }
+    }
+  }
+  const female = await findAsset(BODIES_URL, femaleName);
+  const male = await findAsset(BODIES_URL, maleName);
   const libraryOk = await exists(LIBRARY_URL);
 
   const missing: string[] = [];
-  if (!female) missing.push(`${BODIES_URL}${BODY_FILES.female}.gltf`);
-  if (!male) missing.push(`${BODIES_URL}${BODY_FILES.male}.gltf`);
+  if (!female) missing.push(`${BODIES_URL}${femaleName}.gltf`);
+  if (!male) missing.push(`${BODIES_URL}${maleName}.gltf`);
   if (!libraryOk) missing.push(LIBRARY_URL);
 
   if (missing.length > 0 || !female || !male) {
