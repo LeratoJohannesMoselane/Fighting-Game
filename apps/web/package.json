@@ -12,6 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aether-break/babylon-humanoid": "workspace:*",
+    "@aether-break/babylon-humanoid": "workspace:*",
     "@aether-break/combat-core": "workspace:*"
   },
   "devDependencies": {

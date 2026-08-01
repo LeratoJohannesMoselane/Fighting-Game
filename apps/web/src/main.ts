@@ -38,6 +38,31 @@ if (!appRoot) throw new Error('#app missing');
 
 const input = new LocalInput();
 const renderer = new ArenaRenderer(canvas);
+
+/* 3D character overlay — load Mannequin directly on canvas */
+let bEngine: any = null;
+let bScene: any = null;
+(async () => {
+  try {
+    const { Engine } = await import('@babylonjs/core/Engines/engine');
+    const { Scene } = await import('@babylonjs/core/scene');
+    const { ArcRotateCamera } = await import('@babylonjs/core/Cameras/arcRotateCamera');
+    const { Vector3 } = await import('@babylonjs/core/Maths/math.vector');
+    const { HemisphericLight } = await import('@babylonjs/core/Lights/hemisphericLight');
+    bEngine = new Engine(canvas, true);
+    bScene = new Scene(bEngine);
+    new HemisphericLight('light', new Vector3(0, 1, 0), bScene);
+    new ArcRotateCamera('cam', -Math.PI/2, Math.PI/2.5, 3, new Vector3(0, 1, 0), bScene);
+    bScene.activeCamera?.attachControl(canvas, true);
+    const { SceneLoader } = await import('@babylonjs/core/Loading/sceneLoader');
+    await SceneLoader.ImportMeshAsync('', '/characters/bodies/Mannequin_F.glb', bScene);
+    bEngine.runRenderLoop(() => bScene?.render());
+    window.addEventListener('resize', () => bEngine?.resize());
+  } catch (e) {
+    console.warn('3D overlay failed', e);
+  }
+})();
+
 const hud = new Hud();
 
 type Screen = 'menu' | 'fight';
