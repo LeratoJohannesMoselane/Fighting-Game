@@ -43,9 +43,11 @@ export const mainMenuScreen: ScreenFactory = (ctx) => {
   body.style.gap = '64px';
   root.appendChild(body);
 
-  const menuCol = el('div', 'ae-col');
+  // ae-menu-col is lifted above ae-side-col so fly-outs are never covered
+  // by the profile card (both panels create backdrop-filter stacking contexts).
+  const menuCol = el('div', 'ae-col ae-menu-col');
   const listPanel = el('div', 'ae-panel');
-  const profCol = el('div', 'ae-col');
+  const profCol = el('div', 'ae-col ae-side-col');
 
   const settings = getSettings();
   const rec = getRecords();
@@ -199,11 +201,15 @@ export const mainMenuScreen: ScreenFactory = (ctx) => {
     subAnchor.appendChild(sub.el);
     if (anchor) {
       anchor.style.position = 'relative';
+      anchor.classList.add('flyout-parent');
       anchor.appendChild(subAnchor);
     } else {
       listPanel.appendChild(subAnchor);
     }
     flyoutOpen = true;
+    // Dim the profile card so the open submenu is the only thing competing
+    // for attention (fixes "GUEST/UNRANKED sits on top of FIGHT modes").
+    document.body.classList.add('ae-flyout-open');
   }
 
   function closeFlyout(): void {
@@ -211,6 +217,10 @@ export const mainMenuScreen: ScreenFactory = (ctx) => {
     subAnchor = null;
     sub = null;
     flyoutOpen = false;
+    for (const n of listPanel.querySelectorAll('.ae-item.flyout-parent')) {
+      n.classList.remove('flyout-parent');
+    }
+    document.body.classList.remove('ae-flyout-open');
   }
 
   mainList.setItems(nodes);

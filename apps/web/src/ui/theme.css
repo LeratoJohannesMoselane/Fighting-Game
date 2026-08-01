@@ -240,6 +240,30 @@ body.ae-flash-off .ae-bg::after {
   min-width: 0;
 }
 
+/*
+ * Stacking fix: `.ae-panel` uses backdrop-filter, which creates a stacking
+ * context — so a fly-out nested inside the menu panel cannot paint above a
+ * *later* sibling panel (the profile card) on z-index alone. Lift the whole
+ * menu column instead, and push side columns behind it.
+ */
+.ae-col.ae-menu-col {
+  position: relative;
+  z-index: 40;
+}
+.ae-col.ae-side-col {
+  position: relative;
+  z-index: 1;
+  transition:
+    opacity 0.28s var(--ae-ease),
+    filter 0.28s var(--ae-ease);
+}
+/* While a submenu is open the side card recedes so the choice is unmistakable. */
+body.ae-flyout-open .ae-col.ae-side-col {
+  opacity: 0.18;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
 .ae-panel {
   background: var(--ae-glass);
   backdrop-filter: blur(14px);
@@ -363,15 +387,39 @@ body.ae-flash-off .ae-bg::after {
   left: calc(100% + 14px);
   top: 0;
   min-width: 280px;
-  background: var(--ae-glass-strong);
+  /* Opaque base (not translucent glass): the fly-out must always out-read
+     whatever sits behind it — profile card, embers, canvas. */
+  background: linear-gradient(180deg, rgba(28, 34, 58, 0.99), rgba(14, 18, 34, 0.99)), var(--ae-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--ae-line);
+  border: 1px solid rgba(233, 69, 96, 0.42);
   border-radius: 12px;
   padding: 8px;
-  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 22px 60px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(233, 69, 96, 0.14);
   animation: aeFlyout 0.28s var(--ae-ease);
-  z-index: 5;
+  z-index: 45;
+}
+/* Connector nub back to the parent row — makes the parent↔child link obvious. */
+.ae-flyout::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 22px;
+  width: 14px;
+  height: 14px;
+  transform: rotate(45deg);
+  background: rgba(28, 34, 58, 0.99);
+  border-left: 1px solid rgba(233, 69, 96, 0.42);
+  border-bottom: 1px solid rgba(233, 69, 96, 0.42);
+}
+/* Parent row stays lit while its fly-out is open. */
+.ae-item.flyout-parent {
+  z-index: 46;
+  background: linear-gradient(90deg, rgba(233, 69, 96, 0.32), rgba(233, 69, 96, 0.08));
+  border-color: rgba(233, 69, 96, 0.6);
 }
 @keyframes aeFlyout {
   from {
@@ -1027,6 +1075,18 @@ body.ae-flash-off .ae-bg::after {
     left: 0;
     top: calc(100% + 8px);
     min-width: 240px;
+  }
+  /* Stacked layout: nub points up at the parent row instead of left. */
+  .ae-flyout::before {
+    left: 26px;
+    top: -8px;
+    transform: rotate(135deg);
+  }
+  /* Column layout puts the profile card *below* the menu — no overlap, so
+     keep it readable rather than dimming it away. */
+  body.ae-flyout-open .ae-col.ae-side-col {
+    opacity: 1;
+    filter: none;
   }
   .ae-title-block {
     margin: 4vh 0 3vh;

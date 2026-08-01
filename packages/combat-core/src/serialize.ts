@@ -1,4 +1,10 @@
-import type { ActionBits, FighterState, GameState, ProjectileState } from './types.js';
+import type {
+  ActionBits,
+  CritterState,
+  FighterState,
+  GameState,
+  ProjectileState,
+} from './types.js';
 
 /**
  * Canonical JSON serialisation with fixed key order (ADR-0002).
@@ -109,6 +115,28 @@ function projectileToCanonical(p: ProjectileState): Record<string, unknown> {
   };
 }
 
+function critterToCanonical(c: CritterState): Record<string, unknown> {
+  return {
+    age: c.age ?? 0,
+    archetypeId: c.archetypeId,
+    attackCooldown: c.attackCooldown ?? 0,
+    facing: c.facing,
+    fleeTimer: c.fleeTimer ?? 0,
+    hp: c.hp,
+    hurtFlash: c.hurtFlash ?? 0,
+    id: c.id,
+    invuln: c.invuln ?? 0,
+    maxHp: c.maxHp,
+    seedOffset: c.seedOffset ?? 0,
+    state: c.state,
+    targetSlot: c.targetSlot ?? null,
+    vx: c.vx,
+    windup: c.windup ?? 0,
+    x: c.x,
+    y: c.y,
+  };
+}
+
 export function toCanonical(state: GameState): Record<string, unknown> {
   const projectiles = state.projectiles
     .slice()
@@ -117,13 +145,22 @@ export function toCanonical(state: GameState): Record<string, unknown> {
 
   const events = state.events.map((e) => sortKeysDeep(e as unknown as Record<string, unknown>));
 
+  const critters = (state.critters ?? [])
+    .slice()
+    .sort((a, b) => cmpNum(a.id, b.id))
+    .map(critterToCanonical);
+
   return {
+    critterSpawnTimer: state.critterSpawnTimer ?? 0,
+    critters,
+    crittersEnabled: state.crittersEnabled === true,
     events,
     fighters: [fighterToCanonical(state.fighters[0]), fighterToCanonical(state.fighters[1])],
     globalHitstop: state.globalHitstop,
     matchPhase: state.matchPhase,
     matchWinner: state.matchWinner,
     mode: state.mode,
+    nextCritterId: state.nextCritterId ?? 1,
     nextProjectileId: state.nextProjectileId,
     phaseTimer: state.phaseTimer,
     projectiles,
@@ -191,6 +228,10 @@ export function cloneState(state: GameState): GameState {
   const next = JSON.parse(serializeState(state)) as GameState;
   syncFighterResources(next.fighters[0]);
   syncFighterResources(next.fighters[1]);
+  if (!Array.isArray(next.critters)) next.critters = [];
+  if (typeof next.nextCritterId !== 'number') next.nextCritterId = 1;
+  if (typeof next.critterSpawnTimer !== 'number') next.critterSpawnTimer = 0;
+  if (typeof next.crittersEnabled !== 'boolean') next.crittersEnabled = false;
   return next;
 }
 
