@@ -1,0 +1,13 @@
+{
+  "name": "@aether-break/relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.mjs",
+    "start": "node src/server.mjs",
+    "build": "echo 'relay: no build step'",
+    "typecheck": "echo 'relay: JavaScript server; no typecheck step'",
+    "lint": "echo 'relay: no lint target'"
+  }
+}

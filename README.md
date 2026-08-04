@@ -47,6 +47,31 @@ pnpm dev
 
 Open the URL Vite prints (usually `http://localhost:5173/`).
 
+### Live lobby events (SSE)
+
+The online lobby now receives room activity through a Server-Sent Events relay.
+Start it alongside the web app in a second terminal:
+
+```bash
+pnpm --filter @aether-break/relay dev
+pnpm dev
+```
+
+The Vite dev server proxies the browser's same-origin `/api/events` requests to
+`http://127.0.0.1:3111`, so the browser never needs to call `localhost` directly.
+For production, route `/api/events` and `/api/events` `POST` requests to the
+relay behind the same public origin. The relay exposes:
+
+- `GET /api/events?channel=lobby` — SSE subscription, automatic reconnect and
+  `Last-Event-ID` replay (up to 100 events per channel)
+- `POST /api/events` — publishes `{ channel, event, data }` to subscribers
+- `GET /health` — relay health and connected client count
+
+The publish endpoint is intentionally unauthenticated for local development.
+Add authentication and authorization before exposing it publicly. Same-origin is the
+default; if the frontend is hosted separately, set `ALLOWED_ORIGIN` to its exact
+public origin.
+
 ### Character menu
 
 1. Pick **your** fighter (Nyra / Bram / Iria)  

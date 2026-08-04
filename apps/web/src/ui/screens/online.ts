@@ -1,10 +1,15 @@
 /**
- * ONLINE — matchmaking lobby UI. The netcode/relay lands in a future
- * milestone, so the lobby presents real flows (casual queue, room codes)
- * with honest "offline build" gating instead of dead ends.
+ * ONLINE — live lobby feed backed by the SSE relay. SSE is intentionally
+ * one-way; room actions are normal HTTP requests and all lobby clients receive
+ * the resulting event on the shared stream.
  */
 
 import { getRecords, rankFor } from '../../services/records';
+import {
+  publishRealtimeEvent,
+  subscribeToRealtime,
+  type RealtimeStatus,
+} from '../../services/realtime';
 import { getSettings } from '../../services/settings';
 import { el, footerHints, ListNav, screenBackground } from '../components';
 import type { ScreenFactory } from '../router';
@@ -14,6 +19,13 @@ function randomCode(): string {
   let out = '';
   for (let i = 0; i < 6; i++) out += letters[Math.floor(Math.random() * letters.length)];
   return out;
+}
+
+function statusText(status: RealtimeStatus): string {
+  if (status === 'connected') return 'LIVE · SSE CONNECTED';
+  if (status === 'connecting') return 'CONNECTING TO RELAY…';
+  if (status === 'error') return 'RECONNECTING…';
+  return 'RELAY OFFLINE';
 }
 
 export const onlineScreen: ScreenFactory = () => {
@@ -37,14 +49,52 @@ export const onlineScreen: ScreenFactory = () => {
   banner.style.marginTop = '6px';
   body.appendChild(banner);
 
+  const connection = el('div', 'ae-note', 'CONNECTING TO RELAY…');
+  connection.setAttribute('role', 'status');
+  body.appendChild(connection);
+
   const listPanel = el('div', 'ae-panel');
   listPanel.style.minWidth = 'min(560px, 92vw)';
-
   const codeBox = el('div', 'ae-code-box', '—— —— ——');
+  const activity = el('div', 'ae-note', 'Waiting for live lobby events…');
+  activity.style.maxWidth = '560px';
+  activity.style.textAlign = 'center';
+
+  const notify = (message: string) => {
+    activity.textContent = message;
+  };
+
+  const createRoom = async () => {
+    const code = randomCode();
+    codeBox.textContent = code.replace(/(...)/, '$1 ');
+    try {
+      await publishRealtimeEvent('room.created', { code, host: tag });
+      notify(`Room ${code} created. Connected players receive this event instantly.`);
+    } catch {
+      notify('Could not create room: relay is unavailable. Start the SSE relay and retry.');
+    }
+  };
+
+  const joinRoom = async () => {
+    const code = window.prompt('Enter a six-character room code')?.trim().toUpperCase();
+    if (!code) return;
+    if (!/^[A-Z2-9]{6}$/.test(code)) {
+      notify('Room code must contain six letters/numbers.');
+      return;
+    }
+    codeBox.textContent = code.replace(/(...)/, '$1 ');
+    try {
+      await publishRealtimeEvent('room.joined', { code, player: tag });
+      notify(`Join request for ${code} sent to the live lobby.`);
+    } catch {
+      notify('Could not join room: relay is unavailable.');
+    }
+  };
 
   const list = new ListNav({
-    onConfirm: () => {
-      /* gated — see note */
+    onConfirm: (item) => {
+      if (item.id === 'create') void createRoom();
+      if (item.id === 'join') void joinRoom();
     },
   });
   list.setItems([
@@ -53,46 +103,46 @@ export const onlineScreen: ScreenFactory = () => {
       label: 'CASUAL MATCH',
       icon: '🌐',
       disabled: true,
-      badge: { text: 'OFFLINE BUILD', tone: 'blue' },
+      badge: { text: 'COMING SOON', tone: 'blue' },
     },
     {
       id: 'ranked',
       label: 'RANKED MATCH',
       icon: '🏅',
       disabled: true,
-      badge: { text: 'OFFLINE BUILD', tone: 'blue' },
+      badge: { text: 'COMING SOON', tone: 'blue' },
     },
-    { id: 'create', label: 'CREATE ROOM', icon: '🛠️', badge: { text: 'UI READY', tone: 'gold' } },
-    { id: 'join', label: 'JOIN ROOM', icon: '🔑', badge: { text: 'UI READY', tone: 'gold' } },
+    { id: 'create', label: 'CREATE ROOM', icon: '🛠️', badge: { text: 'LIVE', tone: 'gold' } },
+    { id: 'join', label: 'JOIN ROOM', icon: '🔑', badge: { text: 'LIVE', tone: 'gold' } },
   ]);
   listPanel.appendChild(list.el);
   body.appendChild(listPanel);
   body.appendChild(codeBox);
+  body.appendChild(activity);
 
-  const note = el(
-    'div',
-    'ae-note',
-    'Matchmaking needs the relay server build (WebRTC rooms + rollback sync). The lobby UI is wired and ready; until the server lands, fight locally via VERSUS or vs CPU.',
+  const unsubscribe = subscribeToRealtime(
+    'lobby',
+    (event) => {
+      if (event.type === 'room.created')
+        notify(
+          `LIVE: ${String(event.data.host ?? 'A player')} created room ${String(event.data.code ?? '')}.`,
+        );
+      if (event.type === 'room.joined')
+        notify(
+          `LIVE: ${String(event.data.player ?? 'A player')} joined room ${String(event.data.code ?? '')}.`,
+        );
+    },
+    (status) => {
+      connection.textContent = statusText(status);
+      connection.className = `ae-note ${status === 'connected' ? 'blue' : ''}`;
+    },
   );
-  note.style.maxWidth = '560px';
-  note.style.textAlign = 'center';
-  body.appendChild(note);
 
-  // Room interactions (local mock): create shows a code; join focuses the box
-  list.el.addEventListener('click', (e) => {
-    const t = (e.target as HTMLElement).closest('.ae-item') as HTMLElement | null;
-    if (!t) return;
-    if (t.dataset.id === 'create') codeBox.textContent = randomCode().replace(/(...)/, '$1 ');
-    if (t.dataset.id === 'join') {
-      codeBox.textContent = 'ENTER CODE…';
-      codeBox.focus();
-    }
-  });
-
-  root.appendChild(footerHints([['Esc', 'back']]));
-
-  return {
-    el: root,
-    onKey: (e) => list.handleKey(e),
-  };
+  root.appendChild(
+    footerHints([
+      ['Enter', 'select'],
+      ['Esc', 'back'],
+    ]),
+  );
+  return { el: root, onKey: (e) => list.handleKey(e), destroy: unsubscribe };
 };
